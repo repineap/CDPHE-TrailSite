@@ -1,7 +1,6 @@
 import { Component, AfterViewInit } from '@angular/core';
 
 import * as L from 'leaflet';
-import { kml } from '@tmcw/togeojson';
 
 import { MarkerService } from '../marker.service';
 import { ShapeService } from '../shape.service';
@@ -107,7 +106,7 @@ export class MapComponent implements AfterViewInit {
     this.map = L.map('map', {
       center: [ 39, -105.7821 ],
       zoom: 8
-    });
+    }).on('moveend', () => console.log(this.map.getBounds()));
 
     const Default_OSM = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
@@ -127,14 +126,19 @@ export class MapComponent implements AfterViewInit {
       maxZoom: 18
     });
 
+    const OpenStreetMap_Mapnik = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    });
+
     // Default_OSM.addTo(this.map);
     // Stadia_StamenWatercolor.addTo(this.map);
-    Esri_WorldTopoMap.addTo(this.map);
+    OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
   }
 
-  constructor(private _markerService: MarkerService, private _shapeService: ShapeService) { }
+  constructor(private _shapeService: ShapeService) { }
 
   private highlightFeature(e: L.LeafletMouseEvent) {
     const layer = e.target;
@@ -199,6 +203,7 @@ private initTrailsLayer() {
 
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
+
   getTrailColor(length_mi_: any): string {
     //TODO: Have more complicated coloring options
     //TODO: Implement the NPS difficult and "Energy Miles" calculation
@@ -267,7 +272,7 @@ private initTrailsLayer() {
         layer.bindPopup(feature.properties.description);
       }});
 
-    this.layerControl.addBaseLayer(aqiLayer, "Tomorrow AQI Layer")
+    this.layerControl.addBaseLayer(aqiLayer, "Tomorrow AQI Layer");
   }
 
   private getAQIStyle(styleUrl: string): any {
@@ -352,10 +357,10 @@ getFacilityColor(d_FAC_TYPE: any): string {
 
 ngAfterViewInit(): void {
     this.initMap();
-    // this._shapeService.getCotrexShapes().subscribe(trails => {
-    //   this.trails = this.groupTrailsByName(trails);
-    //   this.initTrailsLayer();
-    // })
+    this._shapeService.getCotrexShapes().subscribe(trails => {
+      this.trails = this.groupTrailsByName(trails);
+      this.initTrailsLayer();
+    })
     this._shapeService.getTodayAQIShapes().subscribe(aqiData => {
       this.todayAqiData = aqiData;
       this.initTodayAQILayer()
