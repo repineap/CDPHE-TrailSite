@@ -1,1 +1,23 @@
 /* You can add global styles to this file, and also import other style files */
+.circle-marker {
+    position: absolute;
+    border: 2px solid black;
+    width: 200%;
+    height: 200%;
+    opacity: 0.25;
+    border-radius: 50%;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+  
+.custom-icon {
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2;
+}

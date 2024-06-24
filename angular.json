@@ -33,7 +33,9 @@
               "node_modules/leaflet/dist/leaflet.css",
               "src/styles.css"
             ],
-            "scripts": []
+            "scripts": [
+              "node_modules/leaflet-svg-shape-markers/src/shapeMarker.js"
+            ]
           },
           "configurations": {
             "production": {

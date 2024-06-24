@@ -1,5 +1,7 @@
 import { Component, AfterViewInit } from '@angular/core';
+
 import * as L from 'leaflet';
+import { kml } from '@tmcw/togeojson';
 
 import { MarkerService } from '../marker.service';
 import { ShapeService } from '../shape.service';
@@ -19,6 +21,71 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
+const aqiStyles: { [key: string]: any} = {
+  "#Unavailable": {
+      "fillColor": "#cccccc",
+      "fillOpacity": 0.4,
+      "color": "#cccccc",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#Invisible": {
+      "fillColor": "#000000",
+      "fillOpacity": 0.0,
+      "color": "#000000",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#Good": {
+      "fillColor": "#00E400",
+      "fillOpacity": 0.41,
+      "color": "#00E400",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#Moderate": {
+      "fillColor": "#ffff00",
+      "fillOpacity": 0.41,
+      "color": "#ffff00",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#UnhealthySG": {
+      "fillColor": "#ff7e00",
+      "fillOpacity": 0.41,
+      "color": "#ff7e00",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#Unhealthy": {
+      "fillColor": "#ff0000",
+      "fillOpacity": 0.41,
+      "color": "#ff0000",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#VeryUnhealthy": {
+      "fillColor": "#99004c",
+      "fillOpacity": 0.41,
+      "color": "#99004c",
+      "opacity": 0.0,
+      "weight": 1
+  },
+  "#Hazardous": {
+      "fillColor": "#7e0023",
+      "fillOpacity": 0.41,
+      "color": "#7e0023",
+      "opacity": 0.0,
+      "weight": 1
+  }
+}
+
+// const tentIcon = L.icon({
+//   iconUrl: 'assets/data/tent-icon.svg',
+//   iconSize: [25, 25],
+//   className: 'tent-icon'
+// })
+
 @Component({
   selector: 'app-map',
   standalone: true,
@@ -28,8 +95,13 @@ L.Marker.prototype.options.icon = iconDefault;
 })
 export class MapComponent implements AfterViewInit {
   private map!: L.Map;
-  private states!: any;
-  private trails!: any;
+  private trails: any;
+  private todayAqiData: any;
+  private tomorrowAqiData: any;
+  private trailheadData: any;
+  private facilityData: any;
+
+  private layerControl!: L.Control.Layers;
 
   private initMap() {
     this.map = L.map('map', {
@@ -50,12 +122,16 @@ export class MapComponent implements AfterViewInit {
     });
 
     const Esri_WorldTopoMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
-      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+      attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community',
+      minZoom: 8,
+      maxZoom: 18
     });
 
     // Default_OSM.addTo(this.map);
     // Stadia_StamenWatercolor.addTo(this.map);
     Esri_WorldTopoMap.addTo(this.map);
+    this.layerControl = L.control.layers();
+    this.layerControl.addTo(this.map);
   }
 
   constructor(private _markerService: MarkerService, private _shapeService: ShapeService) { }
@@ -84,63 +160,44 @@ private resetFeature(e: L.LeafletMouseEvent) {
   });
 }
 
-  private initStatesLayer() {
-    const stateLayer = L.geoJSON(this.states, {
-      style: (feature) => ({
-        weight: 3,
-        opacity: 0.5,
-        color: '#008f68',
-        fillOpacity: 0.8,
-        fillColor: '#6DB65B'
-      }),
-      onEachFeature: (feature, layer) => {
-        layer.on({
-          mouseover: (e) => (this.highlightFeature(e)),
-          mouseout: (e) => (this.resetFeature(e)),
-        })
-      }
-    });
+//TODO: Fix this highlighting functionality
+highlightTrail(e: L.LeafletMouseEvent, length_mi_: number) {
+  const layer = e.target;
 
-    this.map.addLayer(stateLayer);
-    stateLayer.bringToBack();
-  }
+  layer.setStyle({
+    weight: 10,
+    opacity: 1,
+    color: 'black'
+  });
+}
 
-  //TODO: Fix this highlighting functionality
-  highlightTrail(e: L.LeafletMouseEvent, length_mi_: number) {
-    const layer = e.target;
-
-    layer.setStyle({
-      weight: 10,
+private initTrailsLayer() {
+  const trailLayer = L.geoJSON(this.trails, {
+    style: (feature) => ({
+      weight: 4,
       opacity: 1,
-      color: 'black'
-    });
-  }
-
-  private initTrailsLayer() {
-    const trailLayer = L.geoJSON(this.trails, {
-      style: (feature) => ({
-        weight: 5,
-        opacity: 0.5,
-        color: this.getTrailColor(feature?.properties.length_mi_)
-      }),
-      filter: (feature) => {
-        //TODO: Filter based on more things?
-        return feature.properties && feature.properties.name !== '' && feature.properties.length_mi_ > 0;
-      },
-      onEachFeature: (feature, layer) => {
-        //TODO: Fix popup to accurately display what we want it to
-        const popupContent = 
-          `<p>${feature.properties.name}</p>
-          <p>${feature.properties.length_mi_}</p>`;
-        layer.bindPopup(popupContent);
-        layer.on({
-          //TODO: Fix the trail highlighting functionality to make it work on clicking on and clicking off
-          mousedown: (e) => this.highlightTrail(e, feature.properties.length_mi_)
-        })
-      }
-    });
+      color: this.getTrailColor(feature?.properties.length_mi_)
+    }),
+    filter: (feature) => {
+      //TODO: Filter based on more things?
+      return feature.properties && feature.properties.name !== '' && feature.properties.length_mi_ > 0;
+    },
+    onEachFeature: (feature, layer) => {
+      //TODO: Fix popup to accurately display what we want it to
+      const popupContent = 
+        `<p>${feature.properties.name}</p>
+        <p>${feature.properties.length_mi_}</p>`;
+      layer.bindPopup(popupContent);
+      layer.on({
+        //TODO: Fix the trail highlighting functionality to make it work on clicking on and clicking off
+        mousedown: (e) => this.highlightTrail(e, feature.properties.length_mi_)
+      })
+    }
+  });
 
     this.map.addLayer(trailLayer);
+
+    this.layerControl.addOverlay(trailLayer, "Trails");
   }
   getTrailColor(length_mi_: any): string {
     //TODO: Have more complicated coloring options
@@ -187,19 +244,133 @@ private resetFeature(e: L.LeafletMouseEvent) {
         type: 'FeatureCollection',
         features: Object.values(trailsByName)
     };
+  }
+
+  private initTodayAQILayer() {
+    const aqiLayer = L.geoJSON(this.todayAqiData, {
+      style: (feature) => (this.getAQIStyle(feature?.properties.styleUrl)),
+      onEachFeature: (feature, layer) => {
+        //TODO: Fix popup to accurately display what we want it to
+        layer.bindPopup(feature.properties.description);
+      }});
+
+    aqiLayer.addTo(this.map);
+
+    this.layerControl.addBaseLayer(aqiLayer, "Today AQI Layer")
+  }
+
+  private initTomorrowAQILayer() {
+    const aqiLayer = L.geoJSON(this.tomorrowAqiData, {
+      style: (feature) => (this.getAQIStyle(feature?.properties.styleUrl)),
+      onEachFeature: (feature, layer) => {
+        //TODO: Fix popup to accurately display what we want it to
+        layer.bindPopup(feature.properties.description);
+      }});
+
+    this.layerControl.addBaseLayer(aqiLayer, "Tomorrow AQI Layer")
+  }
+
+  private getAQIStyle(styleUrl: string): any {
+    return aqiStyles[styleUrl];
+  }
+
+  private initTrailheadLayer() {
+    const trailheadLayer = L.geoJSON(this.trailheadData, {
+      pointToLayer: (feature, latlng) => {
+        return L.circleMarker(latlng, {
+          radius: 8,
+          weight: 2,
+          color: 'black',
+          fillColor: 'maroon',
+          opacity: 1,
+          fillOpacity: 0.75
+        });
+      },
+      onEachFeature: (feature, layer) => {
+        const properties = feature.properties;
+
+        const name = properties.name;
+
+        const popupContent = `<p>${name}</p>`;
+
+        layer.bindPopup(popupContent);
+      },
+    });
+    
+    trailheadLayer.addTo(this.map);
+
+    this.layerControl.addOverlay(trailheadLayer, "Trailheads");
+  }
+
+private initFacilityLayer() {
+  const facilityLayer = L.geoJSON(this.facilityData, {
+    filter: (feature) => {
+      return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) !== 'orange';
+    },
+    pointToLayer: (feature, latlng) => {
+      const facilityColor = this.getFacilityColor(feature.properties.d_FAC_TYPE);
+
+      const imageUrl = facilityColor === 'green' ? 'tent-icon.svg' : 'fishing-rod-icon.svg'
+
+      const divIcon = L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`
+      });
+
+      return L.marker(latlng, {
+        icon: divIcon,
+      });
+    },
+    onEachFeature: (feature, layer) => {
+      const properties = feature.properties;
+
+      const name = properties.FAC_NAME;
+
+      const popupContent = `<p>${name}</p>`;
+
+      layer.bindPopup(popupContent);
+    },
+  });
+  
+  facilityLayer.addTo(this.map);
+
+  this.layerControl.addOverlay(facilityLayer, "Facilities");
 }
 
-  ngAfterViewInit(): void {
+getFacilityColor(d_FAC_TYPE: any): string {
+  const fishingFacilities = ['Boat Ramp', 'Boating', 'Fishing', 'Fishing - ADA Accessible', 'Marina'];
+  const campingFacilities = ['Cabin', 'Campground', 'Campsite', 'Group Campground', 'RV Campground, Yurt'];
+
+  if (fishingFacilities.includes(d_FAC_TYPE)) {
+    return 'blue';
+  } else if (campingFacilities.includes(d_FAC_TYPE)) {
+    return 'green';
+  } else {
+    return 'orange';
+  }
+}
+
+ngAfterViewInit(): void {
     this.initMap();
-    // this._markerService.makeCapitalMarkers(this.map);
-    this._markerService.makeCapitalCircleMarkers(this.map);
-    // this._shapeService.getStateShapes().subscribe(states => {
-    //   this.states = states;
-    //   this.initStatesLayer();
-    // });
-    this._shapeService.getCotrexShapes().subscribe(trails => {
-      this.trails = this.groupTrailsByName(trails);
-      this.initTrailsLayer()
-    })
+    // this._shapeService.getCotrexShapes().subscribe(trails => {
+    //   this.trails = this.groupTrailsByName(trails);
+    //   this.initTrailsLayer();
+    // })
+    this._shapeService.getTodayAQIShapes().subscribe(aqiData => {
+      this.todayAqiData = aqiData;
+      this.initTodayAQILayer()
+    });
+    this._shapeService.getTomorrowAQIShapes().subscribe(aqiData => {
+      this.tomorrowAqiData = aqiData;
+      this.initTomorrowAQILayer()
+    });
+    this._shapeService.getTrailheadShapes().subscribe(trailheadData => {
+      this.trailheadData = trailheadData;
+      this.initTrailheadLayer();
+    });
+    this._shapeService.getFacilityShapes().subscribe(facilityData => {
+      this.facilityData = facilityData;
+      this.initFacilityLayer();
+    });
   }
 }
