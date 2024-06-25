@@ -19,6 +19,7 @@
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "@tmcw/togeojson": "^5.8.1",
+    "@turf/turf": "^7.0.0",
     "leaflet": "^1.9.4",
     "leaflet-kml": "^1.0.1",
     "leaflet-svg-shape-markers": "^1.4.0",
