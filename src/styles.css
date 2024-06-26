@@ -25,3 +25,21 @@
     transform: translate(-50%, -50%);
     z-index: 2;
 }
+
+.custom-div-icon {
+    background-color: transparent;
+    border: none;
+  }
+  
+  .trailhead-centroid {
+    opacity: 0.75;
+    color: white;
+    font-weight: bold;
+    text-align: center;
+    line-height: 30px;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: inline-block;
+    border: 2px solid black;
+  }

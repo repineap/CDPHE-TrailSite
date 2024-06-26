@@ -24,7 +24,15 @@ export class ShapeService {
     return this._http.get('/assets/data/Trailheads_COTREX.json');
   }
 
+  getTrailheadCentroids() {
+    return this._http.get('/assets/data/Trailheads_COTREX_centroids.geojson')
+  }
+
   getFacilityShapes() {
     return this._http.get('/assets/data/CPWFacilities.json');
+  }
+
+  getFacilityCentroids() {
+    return this._http.get('/assets/data/CPWFacilities_centroids.geojson');
   }
 }

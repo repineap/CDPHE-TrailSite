@@ -34,7 +34,6 @@
               "src/styles.css"
             ],
             "scripts": [
-              "node_modules/leaflet-svg-shape-markers/src/shapeMarker.js"
             ]
           },
           "configurations": {

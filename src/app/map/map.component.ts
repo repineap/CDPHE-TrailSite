@@ -1,9 +1,9 @@
 import { Component, AfterViewInit } from '@angular/core';
 
 import * as L from 'leaflet';
-import * as turf from '@turf/turf';
 
 import { ShapeService } from '../shape.service';
+import { GeoStylingService } from '../geo-styling.service';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -20,73 +20,6 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
-//Used to style the AQI blobs, taken directly from AirNow, but hardcoded to prevent files
-//TODO: Refactor into separate service for better readability
-const aqiStyles: { [key: string]: any} = {
-  "#Unavailable": {
-      "fillColor": "#cccccc",
-      "fillOpacity": 0.4,
-      "color": "#cccccc",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#Invisible": {
-      "fillColor": "#000000",
-      "fillOpacity": 0.0,
-      "color": "#000000",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#Good": {
-      "fillColor": "#00E400",
-      "fillOpacity": 0.151,
-      "color": "#00E400",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#Moderate": {
-      "fillColor": "#ffff00",
-      "fillOpacity": 0.201,
-      "color": "#ffff00",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#UnhealthySG": {
-      "fillColor": "#ff7e00",
-      "fillOpacity": 0.251,
-      "color": "#ff7e00",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#Unhealthy": {
-      "fillColor": "#ff0000",
-      "fillOpacity": 0.251,
-      "color": "#ff0000",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#VeryUnhealthy": {
-      "fillColor": "#99004c",
-      "fillOpacity": 0.251,
-      "color": "#99004c",
-      "opacity": 1,
-      "weight": 2
-  },
-  "#Hazardous": {
-      "fillColor": "#7e0023",
-      "fillOpacity": 0.251,
-      "color": "#7e0023",
-      "opacity": 1,
-      "weight": 2
-  }
-}
-
-// const tentIcon = L.icon({
-//   iconUrl: 'assets/data/tent-icon.svg',
-//   iconSize: [25, 25],
-//   className: 'tent-icon'
-// })
-
 @Component({
   selector: 'app-map',
   standalone: true,
@@ -97,16 +30,19 @@ const aqiStyles: { [key: string]: any} = {
 export class MapComponent implements AfterViewInit {
   private map!: L.Map;
   private trails: any;
-  private trailLayer!: L.GeoJSON;
   private todayAqiData: any;
   private tomorrowAqiData: any;
   private trailheadData: any;
+  private centroidData: any;
   private facilityData: any;
+  private facilityCentroidData: any;
 
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
   private locationPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
+  private layerStatus: { [key: string]: boolean } = {};
+  private dynamicLayers: { [key: string]: L.Layer } = {};
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -115,9 +51,6 @@ export class MapComponent implements AfterViewInit {
       zoom: 8,
       //Makes it much less laggy, not sure why
       preferCanvas: true
-    }).on('moveend', () => {
-      console.log(this.map.getBounds());
-      console.log(this.map.getCenter());
     });
 
     //The base map for the background, taken from OSM
@@ -139,16 +72,31 @@ export class MapComponent implements AfterViewInit {
 
     this.locationPane = this.map.createPane('LocationPane');
     this.locationPane.style.zIndex = '403';
-    
 
     // Default_OSM.addTo(this.map);
     // Stadia_StamenWatercolor.addTo(this.map);
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
+
+    this.map.on('overlayadd', (event: L.LayersControlEvent) => {
+      this.layerStatus[event.name] = true;
+      console.log(this.layerStatus); // Debugging: Log the layer status
+    });
+
+    this.map.on('overlayremove', (event: L.LayersControlEvent) => {
+      this.layerStatus[event.name] = false;
+      console.log(this.layerStatus); // Debugging: Log the layer status
+    });
   }
 
-  constructor(private _shapeService: ShapeService) { }
+  addDynamicLayer(name: string, layer: L.Layer) {
+    this.dynamicLayers[name] = layer;
+    this.layerControl.addOverlay(layer, name);
+    this.layerStatus[name] = this.map.hasLayer(layer);
+  }
+
+  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
 
   //TODO: Fix this highlighting functionality
   private highlightTrail(e: L.LeafletMouseEvent, length_mi_: number) {
@@ -165,7 +113,7 @@ export class MapComponent implements AfterViewInit {
   if (combineByPlaceID) {
     this.trails = this.groupTrails(this.trails);
   }
-  this.trailLayer = L.geoJSON(this.trails, {
+  const trailLayer = L.geoJSON(this.trails, {
       pane: 'TrailPane',
       style: (feature) => ({
         weight: 4,
@@ -191,7 +139,7 @@ export class MapComponent implements AfterViewInit {
       }
     });
 
-    this.layerControl.addOverlay(this.trailLayer, "Trails");
+    this.layerControl.addOverlay(trailLayer, "Trails");
   }
 
   private getTrailColor(length_mi_: any): string {
@@ -261,7 +209,7 @@ export class MapComponent implements AfterViewInit {
       //   const coloradoPoly = turf.bboxPolygon(coloradoBBox);
       //   return turf.booleanIntersects(feature.geometry, coloradoPoly);
       // },
-      style: (feature) => (this.getAQIStyle(feature?.properties.styleUrl)),
+      style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
         //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
@@ -281,17 +229,13 @@ export class MapComponent implements AfterViewInit {
       //   const coloradoPoly = turf.bboxPolygon(coloradoBBox);
       //   return turf.booleanIntersects(feature.geometry, coloradoPoly);
       // },
-      style: (feature) => (this.getAQIStyle(feature?.properties.styleUrl)),
+      style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
         //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
       }});
 
     this.layerControl.addBaseLayer(aqiLayer, "Tomorrow's AQI Levels");
-  }
-
-  private getAQIStyle(styleUrl: string): any {
-    return aqiStyles[styleUrl];
   }
 
   private initTrailheadLayer() {
@@ -317,10 +261,91 @@ export class MapComponent implements AfterViewInit {
         layer.bindPopup(popupContent);
       },
     });
-    
-    trailheadLayer.addTo(this.map);
 
-    this.layerControl.addOverlay(trailheadLayer, "Trailheads");
+    const k15_Centroids = L.geoJSON(this.centroidData, {
+      filter: (feature) => {
+        return feature.properties.kmeans == 15;
+      },
+      pointToLayer(feature, latlng) {
+        return L.marker(latlng, {
+          icon: createCustomIcon(feature.properties.count, 'maroon')
+        })
+      },
+    });
+
+    const k50_Centroids = L.geoJSON(this.centroidData, {
+      filter: (feature) => {
+        return feature.properties.kmeans == 50;
+      },
+      pointToLayer(feature, latlng) {
+        return L.marker(latlng, {
+          icon: createCustomIcon(feature.properties.count, 'maroon')
+        })
+      },
+    });
+
+    const k100_Centroids = L.geoJSON(this.centroidData, {
+      filter: (feature) => {
+        return feature.properties.kmeans == 100;
+      },
+      pointToLayer(feature, latlng) {
+        return L.marker(latlng, {
+          icon: createCustomIcon(feature.properties.count, 'maroon')
+        })
+      },
+    });
+
+    const k200_Centroids = L.geoJSON(this.centroidData, {
+      filter: (feature) => {
+        return feature.properties.kmeans == 200;
+      },
+      pointToLayer(feature, latlng) {
+        return L.marker(latlng, {
+          icon: createCustomIcon(feature.properties.count, 'maroon')
+        })
+      },
+    });
+
+    const k300_Centroids = L.geoJSON(this.centroidData, {
+      filter: (feature) => {
+        return feature.properties.kmeans == 300;
+      },
+      pointToLayer(feature, latlng) {
+        return L.marker(latlng, {
+          icon: createCustomIcon(feature.properties.count, 'maroon')
+        })
+      },
+    });
+    
+    k15_Centroids.addTo(this.map);
+
+    const layerList = [k15_Centroids, k50_Centroids, k100_Centroids, k200_Centroids, k300_Centroids, trailheadLayer];
+
+    this.addDynamicLayer('Trailheads', trailheadLayer);
+
+    this.map.on('zoomend', () => {
+      console.log(this.map.getZoom())
+      const mapZoom = this.map.getZoom();
+      if (mapZoom <= 8) {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        k15_Centroids.addTo(this.map);
+      } else if (mapZoom <= 9) {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        k50_Centroids.addTo(this.map);
+      } else if (mapZoom <= 10) {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        k100_Centroids.addTo(this.map);
+      } else if (mapZoom <= 11) {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        k200_Centroids.addTo(this.map);
+      } else if (mapZoom <= 12) {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        k300_Centroids.addTo(this.map);
+      } else {
+        layerList.forEach((layer) => layer.removeFrom(this.map));
+        trailheadLayer.addTo(this.map);
+      }
+    });
   }
 
 private initFacilityLayer() {
@@ -369,7 +394,7 @@ private initFacilityLayer() {
       const divIcon = L.divIcon({
         className: 'custom-div-icon',
         html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
-        iconSize: [6, 6]
+        iconSize: [10, 10]
       });
 
       return L.marker(latlng, {
@@ -386,12 +411,35 @@ private initFacilityLayer() {
       layer.bindPopup(popupContent);
     },
   });
-  
-  fishingLayer.addTo(this.map);
-  campingLayer.addTo(this.map);
+
+  const centroid_layer = L.geoJSON(this.facilityCentroidData, {
+    filter: (feature) => {
+      return feature.properties.kmeans == 50;
+    },
+    pointToLayer(feature, latlng) {
+      return L.marker(latlng, {
+        icon: createCustomIcon(feature.properties.count, '#8B8000')
+      })
+    },
+  });
+
+  centroid_layer.addTo(this.map);
 
   this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
   this.layerControl.addOverlay(campingLayer, "Camping Facilities");
+
+  this.map.on('zoomend', () => {
+    const mapZoom = this.map.getZoom();
+    if (mapZoom < 10) {
+      fishingLayer.removeFrom(this.map);
+      campingLayer.removeFrom(this.map);
+      centroid_layer.addTo(this.map);
+    } else {
+      centroid_layer.removeFrom(this.map);
+      fishingLayer.addTo(this.map);
+      campingLayer.addTo(this.map);
+    }
+  });
 }
 
 getFacilityColor(d_FAC_TYPE: any): string {
@@ -409,17 +457,23 @@ getFacilityColor(d_FAC_TYPE: any): string {
 
 ngAfterViewInit(): void {
     this.initMap();
-    this._shapeService.getCotrexShapes().subscribe(trails => {
-      this.trails = trails;
-      this.initTrailsLayer(false);
+    // this._shapeService.getCotrexShapes().subscribe(trails => {
+    //   this.trails = trails;
+    //   this.initTrailsLayer(false);
+    // });
+    this._shapeService.getTrailheadCentroids().subscribe(centroidData => {
+      this.centroidData = centroidData;
+    });
+    this._shapeService.getFacilityCentroids().subscribe(facilityCentroidData => {
+      this.facilityCentroidData = facilityCentroidData;
     });
     this._shapeService.getTodayAQIShapes().subscribe(aqiData => {
       this.todayAqiData = aqiData;
-      this.initTodayAQILayer()
+      this.initTodayAQILayer();
     });
     this._shapeService.getTomorrowAQIShapes().subscribe(aqiData => {
       this.tomorrowAqiData = aqiData;
-      this.initTomorrowAQILayer()
+      this.initTomorrowAQILayer();
     });
     this._shapeService.getTrailheadShapes().subscribe(trailheadData => {
       this.trailheadData = trailheadData;
@@ -430,4 +484,13 @@ ngAfterViewInit(): void {
       this.initFacilityLayer();
     });
   }
+}
+
+function createCustomIcon(count: number, color: string) {
+  return L.divIcon({
+    className: 'custom-div-icon',
+    html: `<div class="trailhead-centroid" style="background-color: ${color}">${count}</div>`,
+    iconSize: [30, 42],
+    iconAnchor: [15, 42]
+  });
 }
