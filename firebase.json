@@ -1,0 +1,10 @@
+{
+  "hosting": {
+    "public": "dist/internship-website/browser",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  }
+}
