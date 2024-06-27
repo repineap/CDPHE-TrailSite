@@ -40,9 +40,8 @@ export class MapComponent implements AfterViewInit {
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
   private locationPane!: HTMLElement;
+  private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
-  private layerStatus: { [key: string]: boolean } = {};
-  private dynamicLayers: { [key: string]: L.Layer } = {};
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -59,35 +58,22 @@ export class MapComponent implements AfterViewInit {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | AQI Data Provided by <a href="https://www.airnow.gov/">AirNow.gov</a>'
     });
 
-    //TODO: Figure out why the layering isn't working with z-indices above 400
+    //TODO: Reorder so that only the markers are on top of the AQI not the entire AQI 
     this.aqiPane = this.map.createPane('AQIPane');
-    this.aqiPane.style.zIndex = '501';
+    this.aqiPane.style.zIndex = '502';
 
     this.trailPane = this.map.createPane('TrailPane');
-    this.trailPane.style.zIndex = '502';
+    this.trailPane.style.zIndex = '504';
 
     this.locationPane = this.map.createPane('LocationPane');
-    this.locationPane.style.zIndex = '503';
+    this.locationPane.style.zIndex = '-10';
+
+    this.customMarkerPane = this.map.createPane('CustomMarkerPane');
+    this.customMarkerPane.style.zIndex = '600';
 
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
-
-    this.map.on('overlayadd', (event: L.LayersControlEvent) => {
-      this.layerStatus[event.name] = true;
-      console.log(this.layerStatus);
-    });
-
-    this.map.on('overlayremove', (event: L.LayersControlEvent) => {
-      this.layerStatus[event.name] = false;
-      console.log(this.layerStatus);
-    });
-  }
-
-  addDynamicLayer(name: string, layer: L.Layer) {
-    this.dynamicLayers[name] = layer;
-    this.layerControl.addOverlay(layer, name);
-    this.layerStatus[name] = this.map.hasLayer(layer);
   }
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
@@ -108,7 +94,8 @@ export class MapComponent implements AfterViewInit {
     this.trails = this.groupTrails(this.trails);
   }
   const trailLayer = L.geoJSON(this.trails, {
-      pane: 'TrailPane',
+      //Works fine for now
+      pane: 'AQIPane',
       style: (feature) => ({
         weight: 4,
         opacity: 0.75,
@@ -236,10 +223,10 @@ export class MapComponent implements AfterViewInit {
     const cetroidColor = 'rgba(186, 0, 0, 0.7)'
 
     const trailheadLayer = L.geoJSON(this.trailheadData, {
-      pane: 'LocationPane',
       pointToLayer: (feature, latlng) => {
         return L.circleMarker(latlng, {
-          pane: 'LocationPane',
+          //Odd, but works fine
+          pane: 'AQIPane',
           radius: 8,
           weight: 2,
           color: 'black',
@@ -267,7 +254,7 @@ export class MapComponent implements AfterViewInit {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
 
         return L.marker(latlng, {
-          pane: 'LocationPane',
+          pane: 'CustomMarkerPane',
           icon: createCustomIcon(feature.properties.count, cetroidColor)
         }).bindPopup(popupContent);
       },
@@ -281,7 +268,7 @@ export class MapComponent implements AfterViewInit {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
 
         return L.marker(latlng, {
-          pane: 'LocationPane',
+          pane: 'CustomMarkerPane',
           icon: createCustomIcon(feature.properties.count, cetroidColor)
         }).bindPopup(popupContent);
       },
@@ -295,7 +282,7 @@ export class MapComponent implements AfterViewInit {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
 
         return L.marker(latlng, {
-          pane: 'LocationPane',
+          pane: 'CustomMarkerPane',
           icon: createCustomIcon(feature.properties.count, cetroidColor)
         }).bindPopup(popupContent);
       },
@@ -309,7 +296,7 @@ export class MapComponent implements AfterViewInit {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
 
         return L.marker(latlng, {
-          pane: 'LocationPane',
+          pane: 'CustomMarkerPane',
           icon: createCustomIcon(feature.properties.count, cetroidColor)
         }).bindPopup(popupContent);
       },
@@ -323,7 +310,7 @@ export class MapComponent implements AfterViewInit {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
 
         return L.marker(latlng, {
-          pane: 'LocationPane',
+          pane: 'CustomMarkerPane',
           icon: createCustomIcon(feature.properties.count, cetroidColor)
         }).bindPopup(popupContent);
       },
@@ -333,11 +320,10 @@ export class MapComponent implements AfterViewInit {
 
     const layerList = [k15_Centroids, k50_Centroids, k100_Centroids, k200_Centroids, k300_Centroids, trailheadLayer];
 
-    this.addDynamicLayer('Trailheads', trailheadLayer);
+    this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
 
     this.map.on('zoomend', () => {
-      console.log(this.map.getZoom())
-      const mapZoom = this.map.getZoom();
+      let mapZoom = this.map.getZoom();
       if (mapZoom <= 8) {
         layerList.forEach((layer) => layer.removeFrom(this.map));
         k15_Centroids.addTo(this.map);
@@ -380,7 +366,7 @@ private initFacilityLayer() {
       });
 
       return L.marker(latlng, {
-        pane: 'LocationPane',
+        pane: 'CustomMarkerPane',
         icon: divIcon,
       });
     },
@@ -412,7 +398,7 @@ private initFacilityLayer() {
       });
 
       return L.marker(latlng, {
-        pane: 'LocationPane',
+        pane: 'CustomMarkerPane',
         icon: divIcon,
       });
     },
@@ -432,10 +418,12 @@ private initFacilityLayer() {
       return feature.properties.kmeans == 50;
     },
     pointToLayer(feature, latlng) {
+      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`
+
       return L.marker(latlng, {
-        pane: 'LocationPane',
+        pane: 'CustomMarkerPane',
         icon: createCustomIcon(feature.properties.count, centroidColor)
-      })
+      }).bindPopup(popupContent);
     },
   });
 
