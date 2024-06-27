@@ -55,38 +55,32 @@ export class MapComponent implements AfterViewInit {
 
     //The base map for the background, taken from OSM
     const OpenStreetMap_Mapnik = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      pane: 'BaseMapPane',
       maxZoom: 19,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | AQI Data Provided by <a href="https://www.airnow.gov/">AirNow.gov</a>'
     });
 
-    const mapPane = this.map.createPane('BaseMapPane');
-    mapPane.style.zIndex = '200';
-
     //TODO: Figure out why the layering isn't working with z-indices above 400
     this.aqiPane = this.map.createPane('AQIPane');
-    this.aqiPane.style.zIndex = '398';
+    this.aqiPane.style.zIndex = '501';
 
     this.trailPane = this.map.createPane('TrailPane');
-    this.trailPane.style.zIndex = '402';
+    this.trailPane.style.zIndex = '502';
 
     this.locationPane = this.map.createPane('LocationPane');
-    this.locationPane.style.zIndex = '403';
+    this.locationPane.style.zIndex = '503';
 
-    // Default_OSM.addTo(this.map);
-    // Stadia_StamenWatercolor.addTo(this.map);
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
 
     this.map.on('overlayadd', (event: L.LayersControlEvent) => {
       this.layerStatus[event.name] = true;
-      console.log(this.layerStatus); // Debugging: Log the layer status
+      console.log(this.layerStatus);
     });
 
     this.map.on('overlayremove', (event: L.LayersControlEvent) => {
       this.layerStatus[event.name] = false;
-      console.log(this.layerStatus); // Debugging: Log the layer status
+      console.log(this.layerStatus);
     });
   }
 
@@ -239,16 +233,19 @@ export class MapComponent implements AfterViewInit {
   }
 
   private initTrailheadLayer() {
+    const cetroidColor = 'rgba(186, 0, 0, 0.7)'
+
     const trailheadLayer = L.geoJSON(this.trailheadData, {
       pane: 'LocationPane',
       pointToLayer: (feature, latlng) => {
         return L.circleMarker(latlng, {
-          radius: 5,
+          pane: 'LocationPane',
+          radius: 8,
           weight: 2,
           color: 'black',
-          fillColor: 'maroon',
-          opacity: 1,
-          fillOpacity: 0.75
+          fillColor: cetroidColor,
+          fillOpacity: 1,
+          opacity: 1
         });
       },
       onEachFeature: (feature, layer) => {
@@ -267,9 +264,12 @@ export class MapComponent implements AfterViewInit {
         return feature.properties.kmeans == 15;
       },
       pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+
         return L.marker(latlng, {
-          icon: createCustomIcon(feature.properties.count, 'maroon')
-        })
+          pane: 'LocationPane',
+          icon: createCustomIcon(feature.properties.count, cetroidColor)
+        }).bindPopup(popupContent);
       },
     });
 
@@ -278,9 +278,12 @@ export class MapComponent implements AfterViewInit {
         return feature.properties.kmeans == 50;
       },
       pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+
         return L.marker(latlng, {
-          icon: createCustomIcon(feature.properties.count, 'maroon')
-        })
+          pane: 'LocationPane',
+          icon: createCustomIcon(feature.properties.count, cetroidColor)
+        }).bindPopup(popupContent);
       },
     });
 
@@ -289,9 +292,12 @@ export class MapComponent implements AfterViewInit {
         return feature.properties.kmeans == 100;
       },
       pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+
         return L.marker(latlng, {
-          icon: createCustomIcon(feature.properties.count, 'maroon')
-        })
+          pane: 'LocationPane',
+          icon: createCustomIcon(feature.properties.count, cetroidColor)
+        }).bindPopup(popupContent);
       },
     });
 
@@ -300,9 +306,12 @@ export class MapComponent implements AfterViewInit {
         return feature.properties.kmeans == 200;
       },
       pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+
         return L.marker(latlng, {
-          icon: createCustomIcon(feature.properties.count, 'maroon')
-        })
+          pane: 'LocationPane',
+          icon: createCustomIcon(feature.properties.count, cetroidColor)
+        }).bindPopup(popupContent);
       },
     });
 
@@ -311,9 +320,12 @@ export class MapComponent implements AfterViewInit {
         return feature.properties.kmeans == 300;
       },
       pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+
         return L.marker(latlng, {
-          icon: createCustomIcon(feature.properties.count, 'maroon')
-        })
+          pane: 'LocationPane',
+          icon: createCustomIcon(feature.properties.count, cetroidColor)
+        }).bindPopup(popupContent);
       },
     });
     
@@ -349,24 +361,26 @@ export class MapComponent implements AfterViewInit {
   }
 
 private initFacilityLayer() {
-  //TODO: Split fishing and camping into two separate layers
+  const centroidColor = 'rgba(174, 154, 0, 0.7)';
+
   const fishingLayer = L.geoJSON(this.facilityData, {
     pane: 'LocationPane',
     filter: (feature) => {
       return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'blue';
     },
     pointToLayer: (feature, latlng) => {
-      const facilityColor = 'blue';
+      const facilityColor = 'rgba(0, 5, 151, 0.7)';
 
       const imageUrl = 'fishing-rod-icon.svg';
 
       const divIcon = L.divIcon({
         className: 'custom-div-icon',
         html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
-        iconSize: [8, 8]
+        iconSize: [20, 20]
       });
 
       return L.marker(latlng, {
+        pane: 'LocationPane',
         icon: divIcon,
       });
     },
@@ -387,17 +401,18 @@ private initFacilityLayer() {
       return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'green';
     },
     pointToLayer: (feature, latlng) => {
-      const facilityColor = 'green'
+      const facilityColor = 'rgba(2, 162, 0, 0.7)'
 
       const imageUrl = 'tent-icon.svg';
 
       const divIcon = L.divIcon({
         className: 'custom-div-icon',
         html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
-        iconSize: [10, 10]
+        iconSize: [20, 20]
       });
 
       return L.marker(latlng, {
+        pane: 'LocationPane',
         icon: divIcon,
       });
     },
@@ -418,7 +433,8 @@ private initFacilityLayer() {
     },
     pointToLayer(feature, latlng) {
       return L.marker(latlng, {
-        icon: createCustomIcon(feature.properties.count, '#8B8000')
+        pane: 'LocationPane',
+        icon: createCustomIcon(feature.properties.count, centroidColor)
       })
     },
   });
@@ -457,10 +473,10 @@ getFacilityColor(d_FAC_TYPE: any): string {
 
 ngAfterViewInit(): void {
     this.initMap();
-    // this._shapeService.getCotrexShapes().subscribe(trails => {
-    //   this.trails = trails;
-    //   this.initTrailsLayer(false);
-    // });
+    this._shapeService.getCotrexShapes().subscribe(trails => {
+      this.trails = trails;
+      this.initTrailsLayer(false);
+    });
     this._shapeService.getTrailheadCentroids().subscribe(centroidData => {
       this.centroidData = centroidData;
     });
@@ -490,7 +506,7 @@ function createCustomIcon(count: number, color: string) {
   return L.divIcon({
     className: 'custom-div-icon',
     html: `<div class="trailhead-centroid" style="background-color: ${color}">${count}</div>`,
-    iconSize: [30, 42],
-    iconAnchor: [15, 42]
+    iconSize: [30, 30],
+    iconAnchor: [15, 15]
   });
 }
