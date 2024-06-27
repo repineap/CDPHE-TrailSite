@@ -6,6 +6,7 @@ import { MarkerService } from './marker.service';
 import { PopupService } from './popup.service';
 import { HttpClientModule } from '@angular/common/http';
 import { AutocompleteLibModule } from 'angular-ng-autocomplete';
+import {sideBarComponent} from './sideBar/sideBar.component'
 
 
 @Component({
@@ -14,7 +15,7 @@ import { AutocompleteLibModule } from 'angular-ng-autocomplete';
     providers: [ShapeService, MarkerService, PopupService],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
-    imports: [RouterOutlet, MapComponent, HttpClientModule, AutocompleteLibModule]
+    imports: [RouterOutlet, MapComponent, HttpClientModule, AutocompleteLibModule, sideBarComponent]
 })
 
 export class AppComponent {

@@ -1,0 +1,45 @@
+.name {
+    margin-left: 1rem;
+    font-size: large;
+    font-weight: bold;
+    margin-top: 1rem;
+}
+
+.description {
+    font-size: medium;
+    margin-left: 1rem;
+    margin-top: .5rem;
+}
+
+.box {
+    height: 18rem;
+    width: 18rem;
+    border: 1px solid black;
+    border-radius: 5px;
+    margin-top: 1rem;
+}
+
+.container {
+    flex: auto;
+    margin-top: 2rem;
+    margin-left: 1rem;
+    max-height: 1000px;
+    overflow-y: scroll;
+    width: 25%;
+}
+
+img{
+    margin: auto;
+    
+}
+
+.arrowContainer{ 
+    position: relative;
+    margin-right: 1rem;
+}
+.arrow {
+    position: absolute;
+    right: 0;
+    
+
+}

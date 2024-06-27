@@ -1,0 +1,11 @@
+<div class="container">
+    <div class="box"  *ngFor="let trailHead of trailHeads.slice(0,10)">
+        <img src="assets/images/trail.jpg"/> 
+        <h1 class="name">{{trailHead.properties.name}}</h1>
+        <p class="description">Description</p>
+        <div class="arrowContainer">
+            <i class="fa-solid fa-arrow-right arrow"></i>
+        </div>
+    </div>
+</div>
+
