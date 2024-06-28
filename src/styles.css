@@ -31,13 +31,16 @@
   }
   
   .trailhead-centroid {
-    color: white;
-    font-weight: bold;
     text-align: center;
     line-height: 30px;
-    border-radius: 50%;
+    /* border-radius: 100%; */
     width: 30px;
     height: 30px;
     display: inline-block;
     border: 2px solid black;
+  }
+
+  .centroid-text {
+    color: black;
+    font-weight: bolder;
   }

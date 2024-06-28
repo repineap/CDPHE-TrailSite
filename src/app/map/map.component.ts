@@ -1,9 +1,12 @@
 import { Component, AfterViewInit } from '@angular/core';
 
 import * as L from 'leaflet';
+import 'leaflet.markercluster';
+import * as turf from '@turf/turf';
 
 import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
+import { forkJoin } from 'rxjs';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -32,16 +35,18 @@ export class MapComponent implements AfterViewInit {
   private trails: any;
   private todayAqiData: any;
   private tomorrowAqiData: any;
+  private todayAqiActive: boolean = true;
   private trailheadData: any;
-  private centroidData: any;
   private facilityData: any;
-  private facilityCentroidData: any;
 
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
   private locationPane!: HTMLElement;
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
+  private markerCluster!: L.MarkerClusterGroup;
+
+  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -66,27 +71,82 @@ export class MapComponent implements AfterViewInit {
     this.trailPane.style.zIndex = '504';
 
     this.locationPane = this.map.createPane('LocationPane');
-    this.locationPane.style.zIndex = '-10';
+    this.locationPane.style.zIndex = '550';
 
     this.customMarkerPane = this.map.createPane('CustomMarkerPane');
     this.customMarkerPane.style.zIndex = '600';
 
+    const fishingMarkerPane = this.map.createPane('FishingMarkerPane');
+    fishingMarkerPane.style.zIndex = '600';
+
+    const campingMarkerPane = this.map.createPane('CampingMarkerPane');
+    campingMarkerPane.style.zIndex = '600';
+
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
+
+    this.markerCluster = L.markerClusterGroup({
+      iconCreateFunction: (cluster) => {
+        let camping = false;
+        let fishing = false;
+        let hiking = false;
+  
+        cluster.getAllChildMarkers().forEach((marker) => {
+          if (camping && fishing && hiking) {
+            return;
+          }
+          if (marker.options.pane === 'CampingMarkerPane') {
+            camping = true;
+          } else if (marker.options.pane === 'FishingMarkerPane') {
+            fishing = true;
+          } else {
+            hiking = true;
+          }
+        });
+        const icon = createCustomIcon(cluster.getChildCount(), this.getClusterColor(cluster.getLatLng()), camping && hiking, camping && fishing);
+        return icon;
+      },
+      disableClusteringAtZoom: 13,
+        maxClusterRadius: (zoom) => {
+          if (zoom <= 10) {
+            return 150;
+          } else if (zoom <= 12) {
+            return 100;
+          }
+          return 50;
+        },
+        clusterPane: 'LocationPane'
+    });
+
+    this.map.on('baselayerchange', () => {
+      this.todayAqiActive = !this.todayAqiActive;
+      this.markerCluster.refreshClusters();
+    });
+
+    this.markerCluster.addTo(this.map);
   }
 
-  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
+  private getClusterColor(latlng: L.LatLng): string {
+    if (!this.todayAqiActive) {
+      for (let feature of this.tomorrowAqiData.features) {
+        const originalPolygon = feature.geometry;
 
-  //TODO: Fix this highlighting functionality
-  private highlightTrail(e: L.LeafletMouseEvent, length_mi_: number) {
-    const layer = e.target;
+        if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
+          return this._styleService.getStyleForAQI(feature.properties.styleUrl).color;
+        }
+      }
+      
+    } else {
+      for (let feature of this.todayAqiData.features) {
+        const originalPolygon = feature.geometry;
 
-    layer.setStyle({
-      weight: 10,
-      opacity: 1,
-      color: 'black'
-    });
+        if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
+          return this._styleService.getStyleForAQI(feature.properties.styleUrl).color;
+        }
+      }
+    }
+    return 'black';
   }
 
   private initTrailsLayer(combineByPlaceID: boolean) {
@@ -113,10 +173,6 @@ export class MapComponent implements AfterViewInit {
           <p>Energy Miles: ${this.getTrailEnergyMiles(feature.properties)}</p>
           <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(feature.properties)}</p>`;
         layer.bindPopup(popupContent);
-        layer.on({
-          //TODO: Fix the trail highlighting functionality to make it work on clicking on and clicking off
-          mousedown: (e) => this.highlightTrail(e, feature.properties.length_mi_)
-        })
       }
     });
 
@@ -194,7 +250,12 @@ export class MapComponent implements AfterViewInit {
       onEachFeature: (feature, layer) => {
         //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
-      }});
+      }
+    });
+
+    this.map.on('zoomend', () => {
+      this.markerCluster.refreshClusters();
+    });
 
     aqiLayer.addTo(this.map);
 
@@ -214,26 +275,33 @@ export class MapComponent implements AfterViewInit {
       onEachFeature: (feature, layer) => {
         //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
-      }});
+      }
+    });
 
     this.layerControl.addBaseLayer(aqiLayer, "Tomorrow's AQI Levels");
+
+    this.map.on('zoomend', () => {
+      this.markerCluster.refreshClusters();
+    });
   }
 
   private initTrailheadLayer() {
-    const cetroidColor = 'rgba(186, 0, 0, 0.7)'
+    const markers: L.CircleMarker[] = [];
 
     const trailheadLayer = L.geoJSON(this.trailheadData, {
       pointToLayer: (feature, latlng) => {
-        return L.circleMarker(latlng, {
+        const m = L.circleMarker(latlng, {
           //Odd, but works fine
           pane: 'AQIPane',
           radius: 8,
           weight: 2,
           color: 'black',
-          fillColor: cetroidColor,
+          fillColor: this.getClusterColor(latlng),
           fillOpacity: 1,
           opacity: 1
         });
+        markers.push(m);
+        return m;
       },
       onEachFeature: (feature, layer) => {
         const properties = feature.properties;
@@ -246,103 +314,19 @@ export class MapComponent implements AfterViewInit {
       },
     });
 
-    const k15_Centroids = L.geoJSON(this.centroidData, {
-      filter: (feature) => {
-        return feature.properties.kmeans == 15;
-      },
-      pointToLayer(feature, latlng) {
-        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
+    trailheadLayer.addTo(this.markerCluster);
 
-        return L.marker(latlng, {
-          pane: 'CustomMarkerPane',
-          icon: createCustomIcon(feature.properties.count, cetroidColor)
-        }).bindPopup(popupContent);
-      },
+    this.map.on("zoomend", () => {
+      trailheadLayer.resetStyle();
+      markers.forEach((marker) => {
+        marker.options.fillColor = this.getClusterColor(marker.getLatLng());
+      });
     });
 
-    const k50_Centroids = L.geoJSON(this.centroidData, {
-      filter: (feature) => {
-        return feature.properties.kmeans == 50;
-      },
-      pointToLayer(feature, latlng) {
-        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
-
-        return L.marker(latlng, {
-          pane: 'CustomMarkerPane',
-          icon: createCustomIcon(feature.properties.count, cetroidColor)
-        }).bindPopup(popupContent);
-      },
-    });
-
-    const k100_Centroids = L.geoJSON(this.centroidData, {
-      filter: (feature) => {
-        return feature.properties.kmeans == 100;
-      },
-      pointToLayer(feature, latlng) {
-        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
-
-        return L.marker(latlng, {
-          pane: 'CustomMarkerPane',
-          icon: createCustomIcon(feature.properties.count, cetroidColor)
-        }).bindPopup(popupContent);
-      },
-    });
-
-    const k200_Centroids = L.geoJSON(this.centroidData, {
-      filter: (feature) => {
-        return feature.properties.kmeans == 200;
-      },
-      pointToLayer(feature, latlng) {
-        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
-
-        return L.marker(latlng, {
-          pane: 'CustomMarkerPane',
-          icon: createCustomIcon(feature.properties.count, cetroidColor)
-        }).bindPopup(popupContent);
-      },
-    });
-
-    const k300_Centroids = L.geoJSON(this.centroidData, {
-      filter: (feature) => {
-        return feature.properties.kmeans == 300;
-      },
-      pointToLayer(feature, latlng) {
-        const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
-
-        return L.marker(latlng, {
-          pane: 'CustomMarkerPane',
-          icon: createCustomIcon(feature.properties.count, cetroidColor)
-        }).bindPopup(popupContent);
-      },
-    });
-    
-    k15_Centroids.addTo(this.map);
-
-    const layerList = [k15_Centroids, k50_Centroids, k100_Centroids, k200_Centroids, k300_Centroids, trailheadLayer];
-
-    this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
-
-    this.map.on('zoomend', () => {
-      let mapZoom = this.map.getZoom();
-      if (mapZoom <= 8) {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        k15_Centroids.addTo(this.map);
-      } else if (mapZoom <= 9) {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        k50_Centroids.addTo(this.map);
-      } else if (mapZoom <= 10) {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        k100_Centroids.addTo(this.map);
-      } else if (mapZoom <= 11) {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        k200_Centroids.addTo(this.map);
-      } else if (mapZoom <= 12) {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        k300_Centroids.addTo(this.map);
-      } else {
-        layerList.forEach((layer) => layer.removeFrom(this.map));
-        trailheadLayer.addTo(this.map);
-      }
+    this.map.on('baselayerchange', () => {
+      markers.forEach((marker) => {
+        marker.options.fillColor = this.getClusterColor(marker.getLatLng());
+      });
     });
   }
 
@@ -366,7 +350,7 @@ private initFacilityLayer() {
       });
 
       return L.marker(latlng, {
-        pane: 'CustomMarkerPane',
+        pane: 'FishingMarkerPane',
         icon: divIcon,
       });
     },
@@ -398,7 +382,7 @@ private initFacilityLayer() {
       });
 
       return L.marker(latlng, {
-        pane: 'CustomMarkerPane',
+        pane: 'CampingMarkerPane',
         icon: divIcon,
       });
     },
@@ -413,37 +397,11 @@ private initFacilityLayer() {
     },
   });
 
-  const centroid_layer = L.geoJSON(this.facilityCentroidData, {
-    filter: (feature) => {
-      return feature.properties.kmeans == 50;
-    },
-    pointToLayer(feature, latlng) {
-      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`
-
-      return L.marker(latlng, {
-        pane: 'CustomMarkerPane',
-        icon: createCustomIcon(feature.properties.count, centroidColor)
-      }).bindPopup(popupContent);
-    },
-  });
-
-  centroid_layer.addTo(this.map);
+  campingLayer.addTo(this.markerCluster);
+  fishingLayer.addTo(this.markerCluster);
 
   this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
   this.layerControl.addOverlay(campingLayer, "Camping Facilities");
-
-  this.map.on('zoomend', () => {
-    const mapZoom = this.map.getZoom();
-    if (mapZoom < 10) {
-      fishingLayer.removeFrom(this.map);
-      campingLayer.removeFrom(this.map);
-      centroid_layer.addTo(this.map);
-    } else {
-      centroid_layer.removeFrom(this.map);
-      fishingLayer.addTo(this.map);
-      campingLayer.addTo(this.map);
-    }
-  });
 }
 
 getFacilityColor(d_FAC_TYPE: any): string {
@@ -461,39 +419,53 @@ getFacilityColor(d_FAC_TYPE: any): string {
 
 ngAfterViewInit(): void {
     this.initMap();
-    this._shapeService.getCotrexShapes().subscribe(trails => {
-      this.trails = trails;
-      this.initTrailsLayer(false);
-    });
-    this._shapeService.getTrailheadCentroids().subscribe(centroidData => {
-      this.centroidData = centroidData;
-    });
-    this._shapeService.getFacilityCentroids().subscribe(facilityCentroidData => {
-      this.facilityCentroidData = facilityCentroidData;
-    });
-    this._shapeService.getTodayAQIShapes().subscribe(aqiData => {
-      this.todayAqiData = aqiData;
-      this.initTodayAQILayer();
-    });
-    this._shapeService.getTomorrowAQIShapes().subscribe(aqiData => {
-      this.tomorrowAqiData = aqiData;
-      this.initTomorrowAQILayer();
-    });
-    this._shapeService.getTrailheadShapes().subscribe(trailheadData => {
-      this.trailheadData = trailheadData;
-      this.initTrailheadLayer();
-    });
-    this._shapeService.getFacilityShapes().subscribe(facilityData => {
-      this.facilityData = facilityData;
-      this.initFacilityLayer();
+    forkJoin({
+      trails: this._shapeService.getCotrexShapes(),
+      todayAqiData: this._shapeService.getTodayAQIShapes(),
+      tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
+      trailheadData: this._shapeService.getTrailheadShapes(),
+      facilityData: this._shapeService.getFacilityShapes()
+    }).subscribe({
+      next: ({ trails, todayAqiData, tomorrowAqiData, trailheadData, facilityData }) => {
+        this.trails = trails;
+        this.todayAqiData = todayAqiData;
+        this.tomorrowAqiData = tomorrowAqiData;
+        this.trailheadData = trailheadData;
+        this.facilityData = facilityData;
+    
+        // Initialize layers after all data is fetched
+        this.initTrailsLayer(false);
+        this.initTodayAQILayer();
+        this.initTomorrowAQILayer();
+        this.initTrailheadLayer();
+        this.initFacilityLayer();
+      },
+      error: err => {
+        console.error('Error fetching data', err);
+      }
     });
   }
 }
 
-function createCustomIcon(count: number, color: string) {
+function createCustomIcon(count: number, color: string, circle: boolean, diamond: boolean) {
+  let shapeRotate;
+  let shapeRadius;
+  if (circle) {
+    shapeRadius = '50%';
+  } else {
+    shapeRadius = '0%';
+  }
+
+  if (diamond) {
+    shapeRotate = '45deg';
+  } else {
+    shapeRotate = '0deg';
+  }
+
   return L.divIcon({
     className: 'custom-div-icon',
-    html: `<div class="trailhead-centroid" style="background-color: ${color}">${count}</div>`,
+    html: `<div class="trailhead-centroid" style="background-color: ${color + "80"}; border-radius: ${shapeRadius}; rotate: ${shapeRotate}">
+    <h1 class="centroid-text" style="rotate: ${'-' + shapeRotate}">${count}</h1></div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15]
   });
