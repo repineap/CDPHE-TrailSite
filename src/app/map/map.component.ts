@@ -16,7 +16,7 @@ const iconDefault = L.icon({
   iconRetinaUrl,
   iconUrl,
   shadowUrl,
-  iconSize: [25, 41],
+  iconSize: [20, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   tooltipAnchor: [16, -28],
@@ -221,13 +221,14 @@ export class MapComponent implements AfterViewInit {
 
     const trailheadLayer = L.geoJSON(this.trailheadData, {
       pointToLayer: (feature, latlng) => {
+        const color = this.getClusterColor(latlng);
         const m = L.circleMarker(latlng, {
           //Odd, but works fine
           pane: 'AQIPane',
           radius: 8,
           weight: 2,
           color: 'black',
-          fillColor: cetroidColor,
+          fillColor: color,
           fillOpacity: 1,
           opacity: 1
         });
@@ -245,9 +246,9 @@ export class MapComponent implements AfterViewInit {
       },
     });
 
-    const k15_Centroids = L.geoJSON(this.generateTrailheadCentroidGeo(15), {
+    const k20_Centroids = L.geoJSON(this.generateTrailheadCentroidGeo(20), {
       filter: (feature) => {
-        return feature.properties.kmeans == 15;
+        return feature.properties.kmeans == 20;
       },
       pointToLayer(feature, latlng) {
         const popupContent = `<p>${feature.properties.count} trailheads in this area</p>`
@@ -328,15 +329,15 @@ export class MapComponent implements AfterViewInit {
       },
     });
 
-    const layerList = [k15_Centroids, k50_Centroids, k100_Centroids, k200_Centroids, k300_Centroids, trailheadLayer];
+    const layerList = [k20_Centroids, k50_Centroids, k100_Centroids, k200_Centroids, k300_Centroids, trailheadLayer];
 
-    const trailheadLayerGroup = L.layerGroup([k15_Centroids]);
+    const trailheadLayerGroup = L.layerGroup([k20_Centroids]);
 
     this.map.on('zoomend', () => {
       const mapZoom = this.map.getZoom();
       if (mapZoom <= 8) {
         layerList.forEach((layer) => trailheadLayerGroup.removeLayer(layer));
-        trailheadLayerGroup.addLayer(k15_Centroids);
+        trailheadLayerGroup.addLayer(k20_Centroids);
       } else if (mapZoom <= 9) {
         layerList.forEach((layer) => trailheadLayerGroup.removeLayer(layer));
         trailheadLayerGroup.addLayer(k50_Centroids);
@@ -482,9 +483,9 @@ private initFacilityLayer() {
   const markers: L.Marker[] = [];
   const centroidCounts: number[] = [];
 
-  const centroid_k15 = L.geoJSON(this.generateFacilityCentroidGeo(15), {
+  const centroid_k20 = L.geoJSON(this.generateFacilityCentroidGeo(20), {
     filter: (feature) => {
-      return feature.properties.kmeans == 15;
+      return feature.properties.kmeans == 20;
     },
     pointToLayer(feature, latlng) {
       const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
@@ -514,7 +515,7 @@ private initFacilityLayer() {
     },
   });
 
-  const centroid_group = L.layerGroup([centroid_k15]);
+  const centroid_group = L.layerGroup([centroid_k20]);
 
   this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
   this.layerControl.addOverlay(campingLayer, "Camping Facilities");
@@ -524,11 +525,11 @@ private initFacilityLayer() {
     if (mapZoom < 10) {
       fishingLayer.removeFrom(this.map);
       campingLayer.removeFrom(this.map);
-      centroid_k15.addTo(centroid_group);
+      centroid_k20.addTo(centroid_group);
       centroid_group.removeLayer(centroid_k50);
       centroid_group.addTo(this.map);
     } else if (mapZoom < 12) {
-      centroid_group.removeLayer(centroid_k15);
+      centroid_group.removeLayer(centroid_k20);
       centroid_k50.addTo(centroid_group);
       centroid_group.addTo(this.map);
       fishingLayer.removeFrom(this.map);
@@ -574,7 +575,9 @@ getFacilityColor(d_FAC_TYPE: any): string {
 }
 
 private generateFacilityCentroidGeo(k: number): any {
-  const centroidPoints = skmeans(this.facilityCoordinates, k);
+  const centroidPoints = skmeans(this.facilityCoordinates, k, "kmpp");
+
+  console.log(centroidPoints);
 
   const counts = Array(k).fill(0);
 
