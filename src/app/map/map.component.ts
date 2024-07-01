@@ -7,6 +7,7 @@ import 'skmeans';
 import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
+import { forkJoin } from 'rxjs';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -38,9 +39,8 @@ export class MapComponent implements AfterViewInit {
   private tomorrowAqiLayer!: L.GeoJSON;
   private trailheadData: any;
   private trailheadCoordinates: any;
-  private centroidData: any;
   private facilityData: any;
-  private facilityCentroidData: any;
+  private facilityCoordinates: any;
 
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
@@ -492,17 +492,23 @@ private initFacilityLayer() {
     },
   });
 
-  const centroid_layer = L.geoJSON(this.facilityCentroidData, {
+  this.facilityCoordinates = this.facilityData.features.map((feature: any) => feature.geometry.coordinates);
+  const markers: L.Marker[] = [];
+  const centroidCounts: number[] = [];
+
+  const centroid_layer = L.geoJSON(this.generateFacilityCentroidGeo(50), {
     filter: (feature) => {
       return feature.properties.kmeans == 50;
     },
     pointToLayer(feature, latlng) {
-      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`
+      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
 
-      return L.marker(latlng, {
+      const m = L.marker(latlng, {
         pane: 'CustomMarkerPane',
-        icon: createCustomIcon(feature.properties.count, centroidColor, false)
       }).bindPopup(popupContent);
+      markers.push(m);
+      centroidCounts.push(feature.properties.count);
+      return m;
     },
   });
 
@@ -523,6 +529,23 @@ private initFacilityLayer() {
       campingLayer.addTo(this.map);
     }
   });
+
+  this.map.on('baselayerchange', () => {
+
+    markers.forEach((marker, i) => {
+      marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
+    });
+
+    centroid_layer.removeFrom(this.map);
+    this.map.addLayer(centroid_layer);
+  });
+
+  markers.forEach((marker, i) => {
+    marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
+  });
+
+  centroid_layer.removeFrom(this.map);
+  this.map.addLayer(centroid_layer);
 }
 
 getFacilityColor(d_FAC_TYPE: any): string {
@@ -538,13 +561,46 @@ getFacilityColor(d_FAC_TYPE: any): string {
   }
 }
 
+private generateFacilityCentroidGeo(k: number): any {
+  const centroidPoints = skmeans(this.facilityCoordinates, k);
+
+  const counts = Array(k).fill(0);
+
+  centroidPoints.idxs.forEach(i => {
+    counts[i] += 1
+  });
+
+  const featureList = Array(k);
+
+  for (let i = 0; i < k; i++) {
+    featureList[i] = {
+      type: 'Feature',
+      geometry: {
+        type: 'Point',
+        coordinates: centroidPoints.centroids[i]
+      },
+      properties: {
+        'count': counts[i],
+        'kmeans': k
+      }
+    }
+  }
+
+  const trailheadGeoJSON = {
+    type: 'FeatureCollection',
+    features: featureList
+  };
+
+  return trailheadGeoJSON;
+}
+
 private getClusterColor(latlng: L.LatLng): string {
   if (this.tomorrowAqiLayer && this.map.hasLayer(this.tomorrowAqiLayer)) {
     for (let feature of this.tomorrowAqiData.features) {
       const originalPolygon = feature.geometry;
 
       if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
-        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color;
+        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
       }
     }
     
@@ -553,7 +609,7 @@ private getClusterColor(latlng: L.LatLng): string {
       const originalPolygon = feature.geometry;
 
       if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
-        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color;
+        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
       }
     }
   }
@@ -566,24 +622,23 @@ ngAfterViewInit(): void {
       this.trails = trails;
       this.initTrailsLayer(false);
     });
-    this._shapeService.getFacilityCentroids().subscribe(facilityCentroidData => {
-      this.facilityCentroidData = facilityCentroidData;
-    });
-    this._shapeService.getTodayAQIShapes().subscribe(aqiData => {
-      this.todayAqiData = aqiData;
-      this.initTodayAQILayer();
-    });
-    this._shapeService.getTomorrowAQIShapes().subscribe(aqiData => {
-      this.tomorrowAqiData = aqiData;
-      this.initTomorrowAQILayer();
-    });
-    this._shapeService.getTrailheadShapes().subscribe(trailheadData => {
-      this.trailheadData = trailheadData;
-      this.initTrailheadLayer();
-    });
-    this._shapeService.getFacilityShapes().subscribe(facilityData => {
-      this.facilityData = facilityData;
-      this.initFacilityLayer();
+    forkJoin({
+      todayAqiData: this._shapeService.getTodayAQIShapes(),
+      tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
+      trailheadData: this._shapeService.getTrailheadShapes(),
+      facilityData: this._shapeService.getFacilityShapes()
+    }).subscribe({
+      next: ({todayAqiData, tomorrowAqiData, trailheadData, facilityData}) => {
+        this.todayAqiData = todayAqiData;
+        this.tomorrowAqiData = tomorrowAqiData;
+        this.trailheadData = trailheadData;
+        this.facilityData = facilityData;
+
+        this.initTodayAQILayer();
+        this.initTomorrowAQILayer();
+        this.initTrailheadLayer();
+        this.initFacilityLayer();
+      }
     });
   }
 }
@@ -591,7 +646,8 @@ ngAfterViewInit(): void {
 function createCustomIcon(count: number, color: string, trailheads: boolean) {
   return L.divIcon({
     className: 'custom-div-icon',
-    html: `<div class="trailhead-centroid" style="background-color: ${color}; border-radius: ${trailheads ? '50%' : '0'}">${count}</div>`,
+    html: `<div class="trailhead-centroid" style="background-color: ${color}; border-radius: ${trailheads ? '50%' : '0'}">
+            <p class="centroid-text">${count}</p></div>`,
     iconSize: [30, 30],
     iconAnchor: [15, 15]
   });
