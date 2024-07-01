@@ -189,15 +189,8 @@ export class MapComponent implements AfterViewInit {
   private initTodayAQILayer() {
     const aqiLayer = L.geoJSON(this.todayAqiData, {
       pane: 'AQIPane',
-      // filter: (feature) => {
-      //   const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
-
-      //   const coloradoPoly = turf.bboxPolygon(coloradoBBox);
-      //   return turf.booleanIntersects(feature.geometry, coloradoPoly);
-      // },
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
-        //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
       }});
 
@@ -209,15 +202,8 @@ export class MapComponent implements AfterViewInit {
   private initTomorrowAQILayer() {
     this.tomorrowAqiLayer = L.geoJSON(this.tomorrowAqiData, {
       pane: 'AQIPane',
-      // filter: (feature) => {
-      //   const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
-
-      //   const coloradoPoly = turf.bboxPolygon(coloradoBBox);
-      //   return turf.booleanIntersects(feature.geometry, coloradoPoly);
-      // },
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
-        //TODO: Fix popup to accurately display what we want it to
         layer.bindPopup(feature.properties.description);
       }});
 
@@ -496,7 +482,23 @@ private initFacilityLayer() {
   const markers: L.Marker[] = [];
   const centroidCounts: number[] = [];
 
-  const centroid_layer = L.geoJSON(this.generateFacilityCentroidGeo(50), {
+  const centroid_k15 = L.geoJSON(this.generateFacilityCentroidGeo(15), {
+    filter: (feature) => {
+      return feature.properties.kmeans == 15;
+    },
+    pointToLayer(feature, latlng) {
+      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
+
+      const m = L.marker(latlng, {
+        pane: 'CustomMarkerPane',
+      }).bindPopup(popupContent);
+      markers.push(m);
+      centroidCounts.push(feature.properties.count);
+      return m;
+    },
+  });
+
+  const centroid_k50 = L.geoJSON(this.generateFacilityCentroidGeo(50), {
     filter: (feature) => {
       return feature.properties.kmeans == 50;
     },
@@ -512,7 +514,7 @@ private initFacilityLayer() {
     },
   });
 
-  centroid_layer.addTo(this.map);
+  const centroid_group = L.layerGroup([centroid_k15]);
 
   this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
   this.layerControl.addOverlay(campingLayer, "Camping Facilities");
@@ -522,9 +524,17 @@ private initFacilityLayer() {
     if (mapZoom < 10) {
       fishingLayer.removeFrom(this.map);
       campingLayer.removeFrom(this.map);
-      centroid_layer.addTo(this.map);
+      centroid_k15.addTo(centroid_group);
+      centroid_group.removeLayer(centroid_k50);
+      centroid_group.addTo(this.map);
+    } else if (mapZoom < 12) {
+      centroid_group.removeLayer(centroid_k15);
+      centroid_k50.addTo(centroid_group);
+      centroid_group.addTo(this.map);
+      fishingLayer.removeFrom(this.map);
+      campingLayer.removeFrom(this.map);
     } else {
-      centroid_layer.removeFrom(this.map);
+      centroid_group.removeFrom(this.map);
       fishingLayer.addTo(this.map);
       campingLayer.addTo(this.map);
     }
@@ -536,16 +546,18 @@ private initFacilityLayer() {
       marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
     });
 
-    centroid_layer.removeFrom(this.map);
-    this.map.addLayer(centroid_layer);
+    if (this.map.hasLayer(centroid_group)) {
+      centroid_group.removeFrom(this.map);
+      this.map.addLayer(centroid_group);
+    }
   });
 
   markers.forEach((marker, i) => {
     marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
   });
 
-  centroid_layer.removeFrom(this.map);
-  this.map.addLayer(centroid_layer);
+  centroid_group.removeFrom(this.map);
+  this.map.addLayer(centroid_group);
 }
 
 getFacilityColor(d_FAC_TYPE: any): string {
