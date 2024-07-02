@@ -16,6 +16,7 @@
     width: 18rem;
     border: 1px solid black;
     border-radius: 5px;
+    margin: auto;
     margin-top: 1rem;
 }
 
@@ -23,23 +24,21 @@
     flex: auto;
     margin-top: 2rem;
     margin-left: 1rem;
-    max-height: 1000px;
+    max-height: 75vh;
     overflow-y: scroll;
     width: 25%;
 }
 
-img{
+img {
     margin: auto;
-    
 }
 
-.arrowContainer{ 
+.arrowContainer {
     position: relative;
     margin-right: 1rem;
 }
+
 .arrow {
     position: absolute;
     right: 0;
-    
-
 }

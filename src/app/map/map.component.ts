@@ -1,4 +1,4 @@
-import { Component, AfterViewInit } from '@angular/core';
+import { Component, AfterViewInit, Output, EventEmitter } from '@angular/core';
 
 import * as L from 'leaflet';
 import * as turf from '@turf/turf';
@@ -47,6 +47,8 @@ export class MapComponent implements AfterViewInit {
   private locationPane!: HTMLElement;
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
+
+  @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -124,6 +126,12 @@ export class MapComponent implements AfterViewInit {
         })
       }
     });
+
+    this.map.on('moveend', () => {
+      this.mapBoundsChange.emit(this.map.getBounds());
+    });
+
+    console.log(this.map.getBounds());
 
     this.layerControl.addOverlay(trailLayer, "Trails");
   }

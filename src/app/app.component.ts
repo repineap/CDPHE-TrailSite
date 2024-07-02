@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
 import { ShapeService } from './shape.service';
@@ -8,6 +8,7 @@ import { HttpClientModule } from '@angular/common/http';
 import { AutocompleteLibModule } from 'angular-ng-autocomplete';
 import {sideBarComponent} from './sideBar/sideBar.component'
 
+import * as L from 'leaflet';
 
 @Component({
     selector: 'app-root',
@@ -20,6 +21,8 @@ import {sideBarComponent} from './sideBar/sideBar.component'
 
 export class AppComponent {
   title = 'InternshipWebsite';
+  @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
+  public currentMapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
 
   data = [
     {
@@ -51,5 +54,9 @@ export class AppComponent {
 
   selectEvent($event: any) {
     console.log($event);
+  }
+
+  notifySidebar($event: L.LatLngBounds) {
+    this.currentMapBounds = $event;
   }
 }

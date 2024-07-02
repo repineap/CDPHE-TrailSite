@@ -27,4 +27,8 @@ export class ShapeService {
   getFacilityShapes() {
     return this._http.get('/assets/data/CPWFacilities.json');
   }
+
+  getCityShapes() {
+    return this._http.get('/assets/data/Colorado_City_Point_Locations.geojson');
+  }
 }

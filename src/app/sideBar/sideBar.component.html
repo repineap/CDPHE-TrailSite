@@ -1,11 +1,10 @@
-<div class="container">
-    <div class="box"  *ngFor="let trailHead of trailHeads.slice(0,10)">
-        <img src="assets/images/trail.jpg"/> 
+<div class="container" *ngIf="activeTrailheads != undefined">
+    <div class="box" *ngFor="let trailHead of activeTrailheads.slice(0, 50)">
+        <img src="assets/images/trail.jpg" />
         <h1 class="name">{{trailHead.properties.name}}</h1>
-        <p class="description">Description</p>
+        <p class="description">{{ trailHead.properties.manager }} {{ closestCityCenter[trailHead.properties.feature_id].minDist }}</p>
         <div class="arrowContainer">
             <i class="fa-solid fa-arrow-right arrow"></i>
         </div>
     </div>
 </div>
-

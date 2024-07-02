@@ -27,7 +27,7 @@
         </div>
     </div>
 </form>
-<app-sideBar></app-sideBar>
+<app-sideBar [mapBounds]="currentMapBounds"></app-sideBar>
 <ng-template #itemTemplate let-item>
     <a [innerHTML]="item.name"></a>
 </ng-template>
@@ -35,4 +35,4 @@
 <ng-template #notFoundTemplate let-notFound>
     <div [innerHTML]="'Not Found'" style="color: black;"></div>
 </ng-template>
-<app-map></app-map>
+<app-map (mapBoundsChange)="notifySidebar($event)"></app-map>
