@@ -131,8 +131,6 @@ export class MapComponent implements AfterViewInit {
       this.mapBoundsChange.emit(this.map.getBounds());
     });
 
-    console.log(this.map.getBounds());
-
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
 
@@ -584,8 +582,6 @@ getFacilityColor(d_FAC_TYPE: any): string {
 
 private generateFacilityCentroidGeo(k: number): any {
   const centroidPoints = skmeans(this.facilityCoordinates, k, "kmpp");
-
-  console.log(centroidPoints);
 
   const counts = Array(k).fill(0);
 

@@ -1,16 +1,28 @@
-<div class="flex flex-col mt-[2rem] ml-[1rem] w-[25%]" *ngIf="activeTrailheads != undefined">
-    <div class="grid border border-black rounded-md mb-6 w-auto shadow-lg"*ngFor="let trailHead of activeTrailheads.slice(0, 50)">
+<div class="flex flex-col mt-[2rem] ml-[1rem] w-[25%] sidebar-container" *ngIf="activeTrailheads != undefined">
+    <div class="grid border border-black rounded-md mb-6 w-auto shadow-lg"
+        *ngFor="let trailHead of activeTrailheads.slice(0, 50)">
         <img src="assets/images/trail.jpg" />
         <h1 class="text-lg font-bold mx-2 mt-1">{{trailHead.properties.name}}</h1>
-        <p class="description">{{ trailHead.properties.manager }} </p>
-        <p class="mt-2 mx-4">{{ closestCityCenter[trailHead.properties.feature_id].minDist }}</p>
+        <p class="description mx-4">Managed by {{ trailHead.properties.manager }} </p>
+        <p class="mt-2 mx-4">
+            <svg class="h-6 w-6 text-slate-900" fill="none" viewBox="0 0 24 24" stroke="currentColor" style="display: inline;">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {{ closestCityCenter[trailHead.properties.feature_id].minDist }} mi from
+            {{ closestCityCenter[trailHead.properties.feature_id].minCityCenter.properties.name }},
+            {{ closestCityCenter[trailHead.properties.feature_id].minCityCenter.properties.county }} County,
+            {{ closestCityCenter[trailHead.properties.feature_id].minCityCenter.properties.state }}
+        </p>
         <div class="justify-self-end mr-4 my-2">
-        <button (click)='update(trailHead)'>  <i class=" fa-solid fa-arrow-right"></i> </button>
+            <button (click)='update(trailHead)'> <i class=" fa-solid fa-arrow-right"></i> </button>
         </div>
     </div>
 </div>
 
-<div  *ngIf="visible" class="relative shadow-2xl">
+<div *ngIf="visible" class="relative shadow-2xl">
     <div class="absolute right-[3.5rem] border border-black rounded-md w-[65%] p-4 ">
         <h1 class="font-bold text-lg mb-4 underline underline-offset-8 ">{{details.properties.name}}</h1>
         <div class="bg-slate-70 p-4 rounded-md">
@@ -23,4 +35,3 @@
 
     </div>
 </div>
-
