@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, Output, EventEmitter } from '@angular/core';
+import { Component, AfterViewInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 
 import * as L from 'leaflet';
 import * as turf from '@turf/turf';
@@ -31,7 +31,7 @@ L.Marker.prototype.options.icon = iconDefault;
   templateUrl: './map.component.html',
   styleUrl: './map.component.css'
 })
-export class MapComponent implements AfterViewInit {
+export class MapComponent implements AfterViewInit, OnChanges {
   private map!: L.Map;
   private trails: any;
   private todayAqiData: any;
@@ -48,6 +48,7 @@ export class MapComponent implements AfterViewInit {
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
 
+  @Input() trailheadSelected: [number, number] = [0, 0];
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
 
   private initMap() {
@@ -659,6 +660,13 @@ ngAfterViewInit(): void {
         this.initFacilityLayer();
       }
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
+      const coordinates = changes['trailheadSelected'].currentValue;
+      this.map.setView([coordinates[1], coordinates[0]], 14);
+    }
   }
 }
 

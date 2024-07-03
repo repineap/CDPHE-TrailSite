@@ -1,4 +1,4 @@
-import { Component, AfterViewInit, Input, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, AfterViewInit, Input, OnChanges, SimpleChanges, Output, EventEmitter } from '@angular/core';
 import { JsonPipe, NgFor, NgIf, SlicePipe } from '@angular/common';
 
 import * as L from 'leaflet';
@@ -27,6 +27,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   activeTrailheads!: Trailhead[];
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   @Input() searchQuery = '';
+  @Output() trailheadSelected = new EventEmitter<[number, number]>;
 
   constructor(private _shapeService: ShapeService) { }
 
@@ -82,6 +83,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['mapBounds'] && changes['mapBounds'].currentValue) {
+      
       this.handleBoundsChange();
     }
     if (changes['searchQuery'] && changes['searchQuery'].currentValue) {
@@ -95,7 +97,9 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     }
     this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
       const coordinates = th.geometry.coordinates;
-      return th.properties.name !== '' && this.mapBounds.contains(L.latLng(coordinates[1], coordinates[0]));
+      const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
+      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? closestCityCenter.minCityCenter.properties.name + closestCityCenter.minCityCenter.properties.county + " County" : ''}`
+      return th.properties.name !== '' && this.mapBounds.contains(L.latLng(coordinates[1], coordinates[0])) && filterString.includes(this.searchQuery);;
     });
     this.activeTrailheads.sort((a, b) => {
       if (a.properties.name < b.properties.name) {
@@ -110,15 +114,16 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     if (this.trailheads == undefined) {
       return;
     }
-    console.log(this.searchQuery);
-    if (this.searchQuery === 'DEFAULT_SEARCH') {
+    
+    if (this.searchQuery === 'EMPTY_SEARCH') {
+      this.searchQuery = '';
       this.handleBoundsChange();
       return;
     }
     this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
       const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
-      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? closestCityCenter.minCityCenter.properties.name + closestCityCenter.minCityCenter.properties.county + " County" : ''}`
-      return th.properties.name !== '' && filterString.includes(this.searchQuery);
+      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
+      return th.properties.name !== '' && filterString.toLowerCase().includes(this.searchQuery.toLowerCase());
     });
     this.activeTrailheads.sort((a, b) => {
       if (a.properties.name < b.properties.name) {
@@ -131,15 +136,15 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
 
   display = false;
-  details: any
+  details!: Trailhead
 
 
   //hiding info box
   visible: boolean = false
 
-  update(trailHead: any) {
+  update(trailHead: Trailhead) {
     this.visible = !this.visible
     this.details = trailHead
-
+    this.trailheadSelected.emit(trailHead.geometry.coordinates);
   }
 }

@@ -1,5 +1,5 @@
-import { AfterViewInit, Component, EventEmitter, Output } from '@angular/core';
-import { FormsModule } from '@angular/forms'; // Import FormsModule
+import { AfterViewInit, Component, EventEmitter, HostListener, Output } from '@angular/core';
+import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms'; // Import FormsModule
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
 import { ShapeService } from './shape.service';
@@ -17,7 +17,7 @@ import { CityCenter, Trailhead } from './geojson-typing';
     providers: [ShapeService, MarkerService, PopupService],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
-    imports: [RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, FormsModule]
+    imports: [RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, FormsModule, ReactiveFormsModule]
 })
 
 export class AppComponent {
@@ -25,6 +25,18 @@ export class AppComponent {
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
   public currentMapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   public currentSearchQuery = '';
+  public selectedTrailheadCoordinates!: [number, number];
+  public searchControl = new FormControl('');
+
+  constructor() {
+    this.searchControl.valueChanges.subscribe(value => {
+      if (value) {
+        this.currentSearchQuery = value;
+      } else {
+        this.currentSearchQuery = 'EMPTY_SEARCH';
+      }
+    })
+  }
 
   public notifySidebar($event: L.LatLngBounds) {
     this.currentMapBounds = $event;
@@ -41,5 +53,9 @@ export class AppComponent {
 
   onSubmit(): void {
     this.filterTrails(this.searchQuery);
+  }
+
+  zoomToTrailhead($event: [number, number]) {
+    this.selectedTrailheadCoordinates = $event;
   }
 }
