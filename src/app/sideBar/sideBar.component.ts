@@ -101,4 +101,18 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
       }
     });
   }
+
+  
+  display = false;
+  details: any
+
+
+   //hiding info box
+   visible:boolean = false
+
+  update(trailHead: any){
+    this.visible = !this.visible
+    this.details = trailHead
+
+ }
 }

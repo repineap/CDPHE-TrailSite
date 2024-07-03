@@ -392,7 +392,7 @@ private generateTrailheadCentroidGeo(k: number): any {
 
   const counts = Array(k).fill(0);
 
-  centroidPoints.idxs.forEach(i => {
+  centroidPoints.idxs.forEach((i:number) => {
     counts[i] += 1
   });
 
@@ -589,7 +589,7 @@ private generateFacilityCentroidGeo(k: number): any {
 
   const counts = Array(k).fill(0);
 
-  centroidPoints.idxs.forEach(i => {
+  centroidPoints.idxs.forEach((i:number) => {
     counts[i] += 1
   });
 
