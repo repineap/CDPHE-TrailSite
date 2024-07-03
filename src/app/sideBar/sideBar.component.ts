@@ -4,7 +4,7 @@ import { JsonPipe, NgFor, NgIf, SlicePipe } from '@angular/common';
 import * as L from 'leaflet';
 import * as turf from '@turf/turf';
 import { ShapeService } from '../shape.service';
-import { forkJoin } from 'rxjs';
+import { filter, forkJoin } from 'rxjs';
 
 import { Trailhead, CityCenter, Geometry } from '../geojson-typing';
 
@@ -26,7 +26,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   closestCityCenter: { [key: string]: ClosestCityCenter } = {};
   activeTrailheads!: Trailhead[];
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
-  @Input() searchQuery = {};
+  @Input() searchQuery = '';
 
   constructor(private _shapeService: ShapeService) { }
 
@@ -110,7 +110,23 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     if (this.trailheads == undefined) {
       return;
     }
-    console.log(`New query: ${this.searchQuery}`);
+    console.log(this.searchQuery);
+    if (this.searchQuery === 'DEFAULT_SEARCH') {
+      this.handleBoundsChange();
+      return;
+    }
+    this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
+      const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
+      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? closestCityCenter.minCityCenter.properties.name + closestCityCenter.minCityCenter.properties.county + " County" : ''}`
+      return th.properties.name !== '' && filterString.includes(this.searchQuery);
+    });
+    this.activeTrailheads.sort((a, b) => {
+      if (a.properties.name < b.properties.name) {
+        return -1;
+      } else {
+        return 1;
+      }
+    });
   }
 
 
