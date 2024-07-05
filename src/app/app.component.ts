@@ -10,6 +10,7 @@ import {sideBarComponent} from './sideBar/sideBar.component'
 
 import * as L from 'leaflet';
 import { CityCenter, Trailhead } from './geojson-typing';
+import { DescriptorCardComponent } from './descriptor-card/descriptor-card.component';
 
 @Component({
     selector: 'app-root',
@@ -17,7 +18,7 @@ import { CityCenter, Trailhead } from './geojson-typing';
     providers: [ShapeService, MarkerService, PopupService],
     templateUrl: './app.component.html',
     styleUrl: './app.component.css',
-    imports: [RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, FormsModule, ReactiveFormsModule]
+    imports: [RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule]
 })
 
 export class AppComponent {
@@ -25,6 +26,7 @@ export class AppComponent {
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
   public currentMapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   public currentSearchQuery = '';
+  public selectedTrailhead!: Trailhead;
   public selectedTrailheadCoordinates!: [number, number];
   public searchControl = new FormControl('');
 
@@ -55,7 +57,8 @@ export class AppComponent {
     this.filterTrails(this.searchQuery);
   }
 
-  zoomToTrailhead($event: [number, number]) {
-    this.selectedTrailheadCoordinates = $event;
+  zoomToTrailhead($event: Trailhead) {
+    this.selectedTrailhead = $event;
+    this.selectedTrailheadCoordinates = $event.geometry.coordinates;
   }
 }

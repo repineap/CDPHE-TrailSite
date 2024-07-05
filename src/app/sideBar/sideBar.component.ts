@@ -27,7 +27,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   activeTrailheads!: Trailhead[];
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   @Input() searchQuery = '';
-  @Output() trailheadSelected = new EventEmitter<[number, number]>;
+  @Output() trailheadSelected = new EventEmitter<Trailhead>;
 
   constructor(private _shapeService: ShapeService) { }
 
@@ -134,17 +134,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     });
   }
 
-
-  display = false;
-  details!: Trailhead
-
-
-  //hiding info box
-  visible: boolean = false
-
   update(trailHead: Trailhead) {
-    this.visible = !this.visible
-    this.details = trailHead
-    this.trailheadSelected.emit(trailHead.geometry.coordinates);
+    this.trailheadSelected.emit(trailHead);
   }
 }
