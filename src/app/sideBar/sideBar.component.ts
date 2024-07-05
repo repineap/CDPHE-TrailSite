@@ -98,8 +98,8 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
       const coordinates = th.geometry.coordinates;
       const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
-      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? closestCityCenter.minCityCenter.properties.name + closestCityCenter.minCityCenter.properties.county + " County" : ''}`
-      return th.properties.name !== '' && this.mapBounds.contains(L.latLng(coordinates[1], coordinates[0])) && filterString.includes(this.searchQuery);;
+      const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
+      return th.properties.name !== '' && this.mapBounds.contains(L.latLng(coordinates[1], coordinates[0])) && filterString.toLowerCase().includes(this.searchQuery.toLowerCase());
     });
     this.activeTrailheads.sort((a, b) => {
       if (a.properties.name < b.properties.name) {

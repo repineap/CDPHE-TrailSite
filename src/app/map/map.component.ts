@@ -16,7 +16,7 @@ const iconDefault = L.icon({
   iconRetinaUrl,
   iconUrl,
   shadowUrl,
-  iconSize: [20, 41],
+  iconSize: [27, 41],
   iconAnchor: [12, 41],
   popupAnchor: [1, -34],
   tooltipAnchor: [16, -28],
@@ -35,7 +35,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private map!: L.Map;
   private trails: any;
   private todayAqiData: any;
+  private todayColoradoAqiData: any
   private tomorrowAqiData: any;
+  private tomorrowColoradoAqiData: any
   private tomorrowAqiLayer!: L.GeoJSON;
   private trailheadData: any;
   private trailheadCoordinates: any;
@@ -47,6 +49,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private locationPane!: HTMLElement;
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
+  private selectedLocationMarker!: L.Marker
 
   @Input() trailheadSelected: [number, number] = [0, 0];
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
@@ -54,7 +57,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
     this.map = L.map('map', {
-      center: [ 39, -105.7821 ],
+      center: [39, -105.7821],
       zoom: 8,
       //Makes it much less laggy, not sure why
       preferCanvas: true
@@ -82,6 +85,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers();
     this.layerControl.addTo(this.map);
+
+    this.selectedLocationMarker = L.marker([39, -105.7821]);
   }
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
@@ -98,10 +103,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initTrailsLayer(combineByPlaceID: boolean) {
-  if (combineByPlaceID) {
-    this.trails = this.groupTrails(this.trails);
-  }
-  const trailLayer = L.geoJSON(this.trails, {
+    if (combineByPlaceID) {
+      this.trails = this.groupTrails(this.trails);
+    }
+    const trailLayer = L.geoJSON(this.trails, {
       //Works fine for now
       pane: 'AQIPane',
       style: (feature) => ({
@@ -115,7 +120,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
       },
       onEachFeature: (feature, layer) => {
         //TODO: Fix popup to accurately display what we want it to
-        const popupContent = 
+        const popupContent =
           `<p>${feature.properties.name}</p>
           <p>${feature.properties.length_mi_}</p>
           <p>Energy Miles: ${this.getTrailEnergyMiles(feature.properties)}</p>
@@ -138,7 +143,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private getTrailColor(length_mi_: any): string {
     //TODO: Have more complicated coloring options
     //TODO: Implement the NPS difficult and "Energy Miles" calculation
-    if (length_mi_ < 1 ) {
+    if (length_mi_ < 1) {
       return '#1eff00';
     } else if (length_mi_ < 3) {
       return '#e5ff00';
@@ -161,45 +166,55 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private groupTrails(geojson: any): any {
-    const trailsByName: { [key: string]: any} = {};
-    
+    const trailsByName: { [key: string]: any } = {};
+
     geojson.features.forEach((feature: any) => {
-        const name = feature.properties.place_id;
-        if (name) {
-            if (!trailsByName[name]) {
-                trailsByName[name] = {
-                    type: 'Feature',
-                    properties: feature.properties,
-                    geometry: {
-                        type: 'MultiLineString',
-                        coordinates: []
-                    }
-                };
-            } else {
-              //TODO: Update properties to accurately set the length, elevation, etc
+      const name = feature.properties.place_id;
+      if (name) {
+        if (!trailsByName[name]) {
+          trailsByName[name] = {
+            type: 'Feature',
+            properties: feature.properties,
+            geometry: {
+              type: 'MultiLineString',
+              coordinates: []
             }
-            
-            if (feature.geometry.type === 'LineString') {
-                trailsByName[name].geometry.coordinates.push(feature.geometry.coordinates);
-            } else if (feature.geometry.type === 'MultiLineString') {
-                trailsByName[name].geometry.coordinates.push(...feature.geometry.coordinates);
-            }
+          };
+        } else {
+          //TODO: Update properties to accurately set the length, elevation, etc
         }
+
+        if (feature.geometry.type === 'LineString') {
+          trailsByName[name].geometry.coordinates.push(feature.geometry.coordinates);
+        } else if (feature.geometry.type === 'MultiLineString') {
+          trailsByName[name].geometry.coordinates.push(...feature.geometry.coordinates);
+        }
+      }
     });
 
     return {
-        type: 'FeatureCollection',
-        features: Object.values(trailsByName)
+      type: 'FeatureCollection',
+      features: Object.values(trailsByName)
     };
   }
 
   private initTodayAQILayer() {
+    const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
+    const coloradoPoly = turf.bboxPolygon(coloradoBBox);
+    this.todayColoradoAqiData = {
+      "type": "FeatureCollection",
+      "features": this.todayAqiData.features.filter((feature: any) => {
+        return turf.booleanIntersects(feature.geometry, coloradoPoly);
+      })
+    }
+
     const aqiLayer = L.geoJSON(this.todayAqiData, {
       pane: 'AQIPane',
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
         layer.bindPopup(feature.properties.description);
-      }});
+      }
+    });
 
     aqiLayer.addTo(this.map);
 
@@ -207,12 +222,22 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initTomorrowAQILayer() {
+    const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
+    const coloradoPoly = turf.bboxPolygon(coloradoBBox);
+    this.tomorrowColoradoAqiData = {
+      "type": "FeatureCollection",
+      "features": this.tomorrowAqiData.features.filter((feature: any) => {
+        return turf.booleanIntersects(feature.geometry, coloradoPoly);
+      })
+    }
+
     this.tomorrowAqiLayer = L.geoJSON(this.tomorrowAqiData, {
       pane: 'AQIPane',
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
       onEachFeature: (feature, layer) => {
         layer.bindPopup(feature.properties.description);
-      }});
+      }
+    });
 
     this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
   }
@@ -384,259 +409,257 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     trailheadLayerGroup.removeFrom(this.map);
     this.map.addLayer(trailheadLayerGroup);
-}
-
-private generateTrailheadCentroidGeo(k: number): any {
-  const centroidPoints = skmeans(this.trailheadCoordinates, k);
-
-  const counts = Array(k).fill(0);
-
-  centroidPoints.idxs.forEach((i:number) => {
-    counts[i] += 1
-  });
-
-  const featureList = Array(k);
-
-  for (let i = 0; i < k; i++) {
-    featureList[i] = {
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: centroidPoints.centroids[i]
-      },
-      properties: {
-        'count': counts[i],
-        'kmeans': k
-      }
-    }
   }
 
-  const trailheadGeoJSON = {
-    type: 'FeatureCollection',
-    features: featureList
-  };
+  private generateTrailheadCentroidGeo(k: number): any {
+    const centroidPoints = skmeans(this.trailheadCoordinates, k);
 
-  return trailheadGeoJSON;
-}
+    const counts = Array(k).fill(0);
 
-private initFacilityLayer() {
-  const centroidColor = 'rgba(174, 154, 0, 0.7)';
+    centroidPoints.idxs.forEach((i: number) => {
+      counts[i] += 1
+    });
 
-  const fishingLayer = L.geoJSON(this.facilityData, {
-    pane: 'LocationPane',
-    filter: (feature) => {
-      return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'blue';
-    },
-    pointToLayer: (feature, latlng) => {
-      const facilityColor = 'rgba(0, 5, 151, 0.7)';
+    const featureList = Array(k);
 
-      const imageUrl = 'fishing-rod-icon.svg';
-
-      const divIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
-        iconSize: [20, 20]
-      });
-
-      return L.marker(latlng, {
-        pane: 'CustomMarkerPane',
-        icon: divIcon,
-      });
-    },
-    onEachFeature: (feature, layer) => {
-      const properties = feature.properties;
-
-      const name = properties.FAC_NAME;
-
-      const popupContent = `<p>${name}</p>`;
-
-      layer.bindPopup(popupContent);
-    },
-  });
-
-  const campingLayer = L.geoJSON(this.facilityData, {
-    pane: 'LocationPane',
-    filter: (feature) => {
-      return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'green';
-    },
-    pointToLayer: (feature, latlng) => {
-      const facilityColor = 'rgba(2, 162, 0, 0.7)'
-
-      const imageUrl = 'tent-icon.svg';
-
-      const divIcon = L.divIcon({
-        className: 'custom-div-icon',
-        html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
-        iconSize: [20, 20]
-      });
-
-      return L.marker(latlng, {
-        pane: 'CustomMarkerPane',
-        icon: divIcon,
-      });
-    },
-    onEachFeature: (feature, layer) => {
-      const properties = feature.properties;
-
-      const name = properties.FAC_NAME;
-
-      const popupContent = `<p>${name}</p>`;
-
-      layer.bindPopup(popupContent);
-    },
-  });
-
-  this.facilityCoordinates = this.facilityData.features.map((feature: any) => feature.geometry.coordinates);
-  const markers: L.Marker[] = [];
-  const centroidCounts: number[] = [];
-
-  const centroid_k20 = L.geoJSON(this.generateFacilityCentroidGeo(20), {
-    filter: (feature) => {
-      return feature.properties.kmeans == 20;
-    },
-    pointToLayer(feature, latlng) {
-      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
-
-      const m = L.marker(latlng, {
-        pane: 'CustomMarkerPane',
-      }).bindPopup(popupContent);
-      markers.push(m);
-      centroidCounts.push(feature.properties.count);
-      return m;
-    },
-  });
-
-  const centroid_k50 = L.geoJSON(this.generateFacilityCentroidGeo(50), {
-    filter: (feature) => {
-      return feature.properties.kmeans == 50;
-    },
-    pointToLayer(feature, latlng) {
-      const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
-
-      const m = L.marker(latlng, {
-        pane: 'CustomMarkerPane',
-      }).bindPopup(popupContent);
-      markers.push(m);
-      centroidCounts.push(feature.properties.count);
-      return m;
-    },
-  });
-
-  const centroid_group = L.layerGroup([centroid_k20]);
-
-  this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
-  this.layerControl.addOverlay(campingLayer, "Camping Facilities");
-
-  this.map.on('zoomend', () => {
-    const mapZoom = this.map.getZoom();
-    if (mapZoom < 10) {
-      fishingLayer.removeFrom(this.map);
-      campingLayer.removeFrom(this.map);
-      centroid_k20.addTo(centroid_group);
-      centroid_group.removeLayer(centroid_k50);
-      centroid_group.addTo(this.map);
-    } else if (mapZoom < 12) {
-      centroid_group.removeLayer(centroid_k20);
-      centroid_k50.addTo(centroid_group);
-      centroid_group.addTo(this.map);
-      fishingLayer.removeFrom(this.map);
-      campingLayer.removeFrom(this.map);
-    } else {
-      centroid_group.removeFrom(this.map);
-      fishingLayer.addTo(this.map);
-      campingLayer.addTo(this.map);
+    for (let i = 0; i < k; i++) {
+      featureList[i] = {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: centroidPoints.centroids[i]
+        },
+        properties: {
+          'count': counts[i],
+          'kmeans': k
+        }
+      }
     }
-  });
 
-  this.map.on('baselayerchange', () => {
+    const trailheadGeoJSON = {
+      type: 'FeatureCollection',
+      features: featureList
+    };
+
+    return trailheadGeoJSON;
+  }
+
+  private initFacilityLayer() {
+    const centroidColor = 'rgba(174, 154, 0, 0.7)';
+
+    const fishingLayer = L.geoJSON(this.facilityData, {
+      pane: 'LocationPane',
+      filter: (feature) => {
+        return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'blue';
+      },
+      pointToLayer: (feature, latlng) => {
+        const facilityColor = 'rgba(0, 5, 151, 0.7)';
+
+        const imageUrl = 'fishing-rod-icon.svg';
+
+        const divIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
+          iconSize: [20, 20]
+        });
+
+        return L.marker(latlng, {
+          pane: 'CustomMarkerPane',
+          icon: divIcon,
+        });
+      },
+      onEachFeature: (feature, layer) => {
+        const properties = feature.properties;
+
+        const name = properties.FAC_NAME;
+
+        const popupContent = `<p>${name}</p>`;
+
+        layer.bindPopup(popupContent);
+      },
+    });
+
+    const campingLayer = L.geoJSON(this.facilityData, {
+      pane: 'LocationPane',
+      filter: (feature) => {
+        return feature.properties && this.getFacilityColor(feature.properties.d_FAC_TYPE) === 'green';
+      },
+      pointToLayer: (feature, latlng) => {
+        const facilityColor = 'rgba(2, 162, 0, 0.7)'
+
+        const imageUrl = 'tent-icon.svg';
+
+        const divIcon = L.divIcon({
+          className: 'custom-div-icon',
+          html: `<div class="circle-marker" style="background-color: ${facilityColor}"></div><img src="assets/data/${imageUrl}" class="custom-icon">`,
+          iconSize: [20, 20]
+        });
+
+        return L.marker(latlng, {
+          pane: 'CustomMarkerPane',
+          icon: divIcon,
+        });
+      },
+      onEachFeature: (feature, layer) => {
+        const properties = feature.properties;
+
+        const name = properties.FAC_NAME;
+
+        const popupContent = `<p>${name}</p>`;
+
+        layer.bindPopup(popupContent);
+      },
+    });
+
+    this.facilityCoordinates = this.facilityData.features.map((feature: any) => feature.geometry.coordinates);
+    const markers: L.Marker[] = [];
+    const centroidCounts: number[] = [];
+
+    const centroid_k20 = L.geoJSON(this.generateFacilityCentroidGeo(20), {
+      filter: (feature) => {
+        return feature.properties.kmeans == 20;
+      },
+      pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
+
+        const m = L.marker(latlng, {
+          pane: 'CustomMarkerPane',
+        }).bindPopup(popupContent);
+        markers.push(m);
+        centroidCounts.push(feature.properties.count);
+        return m;
+      },
+    });
+
+    const centroid_k50 = L.geoJSON(this.generateFacilityCentroidGeo(50), {
+      filter: (feature) => {
+        return feature.properties.kmeans == 50;
+      },
+      pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
+
+        const m = L.marker(latlng, {
+          pane: 'CustomMarkerPane',
+        }).bindPopup(popupContent);
+        markers.push(m);
+        centroidCounts.push(feature.properties.count);
+        return m;
+      },
+    });
+
+    const centroid_group = L.layerGroup([centroid_k20]);
+
+    this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
+    this.layerControl.addOverlay(campingLayer, "Camping Facilities");
+
+    this.map.on('zoomend', () => {
+      const mapZoom = this.map.getZoom();
+      if (mapZoom < 10) {
+        fishingLayer.removeFrom(this.map);
+        campingLayer.removeFrom(this.map);
+        centroid_k20.addTo(centroid_group);
+        centroid_group.removeLayer(centroid_k50);
+        centroid_group.addTo(this.map);
+      } else if (mapZoom < 12) {
+        centroid_group.removeLayer(centroid_k20);
+        centroid_k50.addTo(centroid_group);
+        centroid_group.addTo(this.map);
+        fishingLayer.removeFrom(this.map);
+        campingLayer.removeFrom(this.map);
+      } else {
+        centroid_group.removeFrom(this.map);
+        fishingLayer.addTo(this.map);
+        campingLayer.addTo(this.map);
+      }
+    });
+
+    this.map.on('baselayerchange', () => {
+
+      markers.forEach((marker, i) => {
+        marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
+      });
+
+      if (this.map.hasLayer(centroid_group)) {
+        centroid_group.removeFrom(this.map);
+        this.map.addLayer(centroid_group);
+      }
+    });
 
     markers.forEach((marker, i) => {
       marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
     });
 
-    if (this.map.hasLayer(centroid_group)) {
-      centroid_group.removeFrom(this.map);
-      this.map.addLayer(centroid_group);
-    }
-  });
-
-  markers.forEach((marker, i) => {
-    marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), false)
-  });
-
-  centroid_group.removeFrom(this.map);
-  this.map.addLayer(centroid_group);
-}
-
-getFacilityColor(d_FAC_TYPE: any): string {
-  const fishingFacilities = ['Boat Ramp', 'Boating', 'Fishing', 'Fishing - ADA Accessible', 'Marina'];
-  const campingFacilities = ['Cabin', 'Campground', 'Campsite', 'Group Campground', 'RV Campground, Yurt'];
-
-  if (fishingFacilities.includes(d_FAC_TYPE)) {
-    return 'blue';
-  } else if (campingFacilities.includes(d_FAC_TYPE)) {
-    return 'green';
-  } else {
-    return 'orange';
+    centroid_group.removeFrom(this.map);
+    this.map.addLayer(centroid_group);
   }
-}
 
-private generateFacilityCentroidGeo(k: number): any {
-  const centroidPoints = skmeans(this.facilityCoordinates, k, "kmpp");
+  getFacilityColor(d_FAC_TYPE: any): string {
+    const fishingFacilities = ['Boat Ramp', 'Boating', 'Fishing', 'Fishing - ADA Accessible', 'Marina'];
+    const campingFacilities = ['Cabin', 'Campground', 'Campsite', 'Group Campground', 'RV Campground, Yurt'];
 
-  const counts = Array(k).fill(0);
-
-  centroidPoints.idxs.forEach((i:number) => {
-    counts[i] += 1
-  });
-
-  const featureList = Array(k);
-
-  for (let i = 0; i < k; i++) {
-    featureList[i] = {
-      type: 'Feature',
-      geometry: {
-        type: 'Point',
-        coordinates: centroidPoints.centroids[i]
-      },
-      properties: {
-        'count': counts[i],
-        'kmeans': k
-      }
+    if (fishingFacilities.includes(d_FAC_TYPE)) {
+      return 'blue';
+    } else if (campingFacilities.includes(d_FAC_TYPE)) {
+      return 'green';
+    } else {
+      return 'orange';
     }
   }
 
-  const trailheadGeoJSON = {
-    type: 'FeatureCollection',
-    features: featureList
-  };
+  private generateFacilityCentroidGeo(k: number): any {
+    const centroidPoints = skmeans(this.facilityCoordinates, k, "kmpp");
 
-  return trailheadGeoJSON;
-}
+    const counts = Array(k).fill(0);
 
-private getClusterColor(latlng: L.LatLng): string {
-  if (this.tomorrowAqiLayer && this.map.hasLayer(this.tomorrowAqiLayer)) {
-    for (let feature of this.tomorrowAqiData.features) {
-      const originalPolygon = feature.geometry;
+    centroidPoints.idxs.forEach((i: number) => {
+      counts[i] += 1
+    });
 
-      if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
-        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
+    const featureList = Array(k);
+
+    for (let i = 0; i < k; i++) {
+      featureList[i] = {
+        type: 'Feature',
+        geometry: {
+          type: 'Point',
+          coordinates: centroidPoints.centroids[i]
+        },
+        properties: {
+          'count': counts[i],
+          'kmeans': k
+        }
       }
     }
-    
-  } else {
-    for (let feature of this.todayAqiData.features) {
-      const originalPolygon = feature.geometry;
 
-      if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
-        return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
-      }
-    }
+    const trailheadGeoJSON = {
+      type: 'FeatureCollection',
+      features: featureList
+    };
+
+    return trailheadGeoJSON;
   }
-  return 'black';
-}
 
-ngAfterViewInit(): void {
+  private getClusterColor(latlng: L.LatLng): string {
+    if (this.tomorrowAqiLayer && this.map.hasLayer(this.tomorrowAqiLayer)) {
+      for (let feature of this.tomorrowColoradoAqiData.features) {
+        const originalPolygon = feature.geometry;
+        if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
+          return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
+        }
+      }
+
+    } else {
+      for (let feature of this.todayColoradoAqiData.features) {
+        const originalPolygon = feature.geometry;
+        if (turf.booleanIntersects(originalPolygon, turf.point([latlng.lng, latlng.lat, 0.0]))) {
+          return this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88';
+        }
+      }
+    }
+    return 'black';
+  }
+
+  ngAfterViewInit(): void {
     this.initMap();
     this._shapeService.getCotrexShapes().subscribe(trails => {
       this.trails = trails;
@@ -648,7 +671,7 @@ ngAfterViewInit(): void {
       trailheadData: this._shapeService.getTrailheadShapes(),
       facilityData: this._shapeService.getFacilityShapes()
     }).subscribe({
-      next: ({todayAqiData, tomorrowAqiData, trailheadData, facilityData}) => {
+      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData }) => {
         this.todayAqiData = todayAqiData;
         this.tomorrowAqiData = tomorrowAqiData;
         this.trailheadData = trailheadData;
@@ -664,8 +687,11 @@ ngAfterViewInit(): void {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
+      console.log(changes['trailheadSelected'].currentValue);
       const coordinates = changes['trailheadSelected'].currentValue;
-      this.map.setView([coordinates[1], coordinates[0]], 14);
+      this.map.setView([coordinates[1], coordinates[0]], 13);
+      this.selectedLocationMarker.setLatLng([coordinates[1], coordinates[0]]);
+      this.selectedLocationMarker.addTo(this.map);
     }
   }
 }
