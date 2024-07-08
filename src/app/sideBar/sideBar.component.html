@@ -4,7 +4,7 @@
     <div id="sidebar-container"
         class="flex flex-col  ml-[1rem] w-[25%] sidebar-container h-[85vh] overflow-y-scroll bg-gray-300 rounded-sm"
         *ngIf="activeTrailheads != undefined">
-        <div class="grid border border-black rounded-md mt-3 w-[95%] m-auto shadow-lg bg-white"
+        <div class="grid border border-black rounded-md mt-3 w-[95%] ml-auto mr-auto shadow-lg bg-white"
             *ngFor="let trailHead of activeTrailheads.slice(0, 50)">
             <!-- <img src="assets/images/trail.jpg" /> -->
             <h1 class="text-lg font-bold mx-2 mt-1">{{trailHead.properties.name}}</h1>

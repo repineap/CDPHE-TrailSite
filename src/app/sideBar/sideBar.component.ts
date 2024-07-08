@@ -41,8 +41,16 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
         this.trailheads = trailheads;
 
         this.activeTrailheads = this.trailheads.features.filter((th: any) => { return th.properties.name !== '' });
+        const mapCenter = this.mapBounds.getCenter();
         this.activeTrailheads.sort((a, b) => {
-          if (a.properties.name < b.properties.name) {
+          const aDistance = turf.distance([mapCenter.lat, mapCenter.lng], [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
+          const bDistance = turf.distance([mapCenter.lat, mapCenter.lng], [b.geometry.coordinates[1], b.geometry.coordinates[0]]);
+          // if (a.properties.name < b.properties.name) {
+          //   return -1;
+          // } else {
+          //   return 1;
+          // }
+          if (aDistance < bDistance) {
             return -1;
           } else {
             return 1;
@@ -56,10 +64,6 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
         });
 
       }
-    })
-    this._shapeService.getTrailheadShapes().subscribe((trailheads) => {
-      this.trailheads = trailheads;
-
     });
   }
 
@@ -83,7 +87,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
   ngOnChanges(changes: SimpleChanges) {
     if (changes['mapBounds'] && changes['mapBounds'].currentValue) {
-      
+
       this.handleBoundsChange();
     }
     if (changes['searchQuery'] && changes['searchQuery'].currentValue) {
@@ -101,8 +105,16 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
       const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
       return th.properties.name !== '' && this.mapBounds.contains(L.latLng(coordinates[1], coordinates[0])) && filterString.toLowerCase().includes(this.searchQuery.toLowerCase());
     });
+    const mapCenter = this.mapBounds.getCenter();
     this.activeTrailheads.sort((a, b) => {
-      if (a.properties.name < b.properties.name) {
+      const aDistance = turf.distance([mapCenter.lat, mapCenter.lng], [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
+      const bDistance = turf.distance([mapCenter.lat, mapCenter.lng], [b.geometry.coordinates[1], b.geometry.coordinates[0]]);
+      // if (a.properties.name < b.properties.name) {
+      //   return -1;
+      // } else {
+      //   return 1;
+      // }
+      if (aDistance < bDistance) {
         return -1;
       } else {
         return 1;
@@ -114,7 +126,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     if (this.trailheads == undefined) {
       return;
     }
-    
+
     if (this.searchQuery === 'EMPTY_SEARCH') {
       this.searchQuery = '';
       this.handleBoundsChange();
@@ -125,8 +137,16 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
       const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
       return th.properties.name !== '' && filterString.toLowerCase().includes(this.searchQuery.toLowerCase());
     });
+    const mapCenter = this.mapBounds.getCenter();
     this.activeTrailheads.sort((a, b) => {
-      if (a.properties.name < b.properties.name) {
+      const aDistance = turf.distance([mapCenter.lat, mapCenter.lng], [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
+      const bDistance = turf.distance([mapCenter.lat, mapCenter.lng], [b.geometry.coordinates[1], b.geometry.coordinates[0]]);
+      // if (a.properties.name < b.properties.name) {
+      //   return -1;
+      // } else {
+      //   return 1;
+      // }
+      if (aDistance < bDistance) {
         return -1;
       } else {
         return 1;

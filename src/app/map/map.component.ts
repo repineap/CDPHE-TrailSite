@@ -8,6 +8,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
+import { TrailheadProperties } from '../geojson-typing';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -69,7 +70,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | AQI Data Provided by <a href="https://www.airnow.gov/">AirNow.gov</a>'
     });
 
-    //TODO: Reorder so that only the markers are on top of the AQI not the entire AQI 
     this.aqiPane = this.map.createPane('AQIPane');
     this.aqiPane.style.zIndex = '502';
 
@@ -90,17 +90,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
-
-  //TODO: Fix this highlighting functionality
-  private highlightTrail(e: L.LeafletMouseEvent, length_mi_: number) {
-    const layer = e.target;
-
-    layer.setStyle({
-      weight: 10,
-      opacity: 1,
-      color: 'black'
-    });
-  }
 
   private initTrailsLayer(combineByPlaceID: boolean) {
     if (combineByPlaceID) {
@@ -126,10 +115,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
           <p>Energy Miles: ${this.getTrailEnergyMiles(feature.properties)}</p>
           <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(feature.properties)}</p>`;
         layer.bindPopup(popupContent);
-        layer.on({
-          //TODO: Fix the trail highlighting functionality to make it work on clicking on and clicking off
-          mousedown: (e) => this.highlightTrail(e, feature.properties.length_mi_)
-        })
       }
     });
 
@@ -140,19 +125,17 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
 
-  private getTrailColor(length_mi_: any): string {
-    //TODO: Have more complicated coloring options
-    //TODO: Implement the NPS difficult and "Energy Miles" calculation
-    if (length_mi_ < 1) {
-      return '#1eff00';
-    } else if (length_mi_ < 3) {
-      return '#e5ff00';
-    } else if (length_mi_ < 5) {
-      return '#ffb300';
-    } else {
-      return '#ff2f00';
-    }
-  }
+  // private getTrailColor(length_mi_: any): string {
+  //   if (length_mi_ < 1) {
+  //     return '#1eff00';
+  //   } else if (length_mi_ < 3) {
+  //     return '#e5ff00';
+  //   } else if (length_mi_ < 5) {
+  //     return '#ffb300';
+  //   } else {
+  //     return '#ff2f00';
+  //   }
+  // }
 
   /*
   Calculated based on https://www.pigeonforge.com/hike-difficulty/#:~:text=Petzoldt%20recommended%20adding%20two%20energy,formulas%20for%20calculating%20trail%20difficulty.
@@ -242,6 +225,60 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
   }
 
+  private initAQILegend() {
+    var legend = L.control.layers(undefined, undefined, { position: "bottomleft" });
+
+    const aqiLevels = [
+      {
+        styleUrl: '#Good',
+        name: 'Good',
+        style: {} as any
+      },
+      {
+        styleUrl: '#Moderate',
+        name: 'Moderate',
+        style: {} as any
+      },
+      {
+        styleUrl: '#UnhealthySG',
+        name: 'Unhealthy for Sensitive Groups',
+        style: {} as any
+      },
+      {
+        styleUrl: '#Unhealthy',
+        name: 'Unhealthy',
+        style: {} as any
+      },
+      {
+        styleUrl: '#VeryUnhealthy',
+        name: 'Very Unhealthy',
+        style: {} as any
+      },
+      {
+        styleUrl: '#Hazardous',
+        name: 'Hazardous',
+        style: {} as any
+      }
+    ];
+
+    aqiLevels.forEach((aqi) => {
+      aqi.style = this._styleService.getStyleForAQI(aqi.styleUrl);
+    });
+
+    legend.onAdd = function (map) {
+      var div = L.DomUtil.create("div", "legend");
+      div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Levels<a></h4>";
+      
+      aqiLevels.forEach((aqi) => {
+        div.innerHTML += `<i style="background: ${aqi.style.color + 'dd'}"></i><span>${aqi.name}</span><br>`
+      })
+
+      return div;
+    };
+
+    this.map.addControl(legend);
+  }
+
   private initTrailheadLayer() {
 
     const cetroidColor = 'rgba(186, 0, 0, 0.7)'
@@ -268,11 +305,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
         return m;
       },
       onEachFeature: (feature, layer) => {
-        const properties = feature.properties;
+        const properties = feature.properties as TrailheadProperties;
 
-        const name = properties.name;
-
-        const popupContent = `<p>${name}</p>`;
+        const popupContent = `
+        <div class="popup">
+          <img src="assets/data/hiker-icon.svg" alt="Hiker Icon">
+          <p>${properties.name}</p>
+        </div>
+        `;
 
         layer.bindPopup(popupContent);
       },
@@ -445,7 +485,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initFacilityLayer() {
-    const centroidColor = 'rgba(174, 154, 0, 0.7)';
 
     const fishingLayer = L.geoJSON(this.facilityData, {
       pane: 'LocationPane',
@@ -471,9 +510,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
       onEachFeature: (feature, layer) => {
         const properties = feature.properties;
 
-        const name = properties.FAC_NAME;
-
-        const popupContent = `<p>${name}</p>`;
+        const popupContent = `
+        <div class="popup">
+          <img src="assets/data/fishing-rod-icon.svg" alt="Fishing Rod Icon">
+          <p>${properties.FAC_NAME}</p>
+        </div>
+        `;
 
         layer.bindPopup(popupContent);
       },
@@ -503,9 +545,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
       onEachFeature: (feature, layer) => {
         const properties = feature.properties;
 
-        const name = properties.FAC_NAME;
-
-        const popupContent = `<p>${name}</p>`;
+        const popupContent = `
+        <div class="popup">
+          <img src="assets/data/tent-icon.svg" alt="Tent Icon">
+          <p>${properties.FAC_NAME}</p>
+        </div>
+        `;
 
         layer.bindPopup(popupContent);
       },
@@ -547,6 +592,22 @@ export class MapComponent implements AfterViewInit, OnChanges {
       },
     });
 
+    const centroid_k200 = L.geoJSON(this.generateFacilityCentroidGeo(200), {
+      filter: (feature) => {
+        return feature.properties.kmeans == 200;
+      },
+      pointToLayer(feature, latlng) {
+        const popupContent = `<p>${feature.properties.count} facilities in this area</p>`;
+
+        const m = L.marker(latlng, {
+          pane: 'CustomMarkerPane',
+        }).bindPopup(popupContent);
+        markers.push(m);
+        centroidCounts.push(feature.properties.count);
+        return m;
+      },
+    });
+
     const centroid_group = L.layerGroup([centroid_k20]);
 
     this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
@@ -554,15 +615,24 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     this.map.on('zoomend', () => {
       const mapZoom = this.map.getZoom();
-      if (mapZoom < 10) {
+      if (mapZoom <= 9) {
         fishingLayer.removeFrom(this.map);
         campingLayer.removeFrom(this.map);
         centroid_k20.addTo(centroid_group);
         centroid_group.removeLayer(centroid_k50);
+        centroid_group.removeLayer(centroid_k200);
         centroid_group.addTo(this.map);
-      } else if (mapZoom < 12) {
+      } else if (mapZoom <= 11) {
         centroid_group.removeLayer(centroid_k20);
+        centroid_group.removeLayer(centroid_k200);
         centroid_k50.addTo(centroid_group);
+        centroid_group.addTo(this.map);
+        fishingLayer.removeFrom(this.map);
+        campingLayer.removeFrom(this.map);
+      } else if (mapZoom <= 12) {
+        centroid_group.removeLayer(centroid_k20);
+        centroid_group.removeLayer(centroid_k50);
+        centroid_k200.addTo(centroid_group);
         centroid_group.addTo(this.map);
         fishingLayer.removeFrom(this.map);
         campingLayer.removeFrom(this.map);
@@ -681,6 +751,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         this.initTomorrowAQILayer();
         this.initTrailheadLayer();
         this.initFacilityLayer();
+        this.initAQILegend();
       }
     });
   }
