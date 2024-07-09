@@ -508,8 +508,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
       const centroidLayer = L.geoJSON(centroidGeoJSON as any, {
         pointToLayer(feature, latlng) {
-          //TODO: Mark the popup with red or green icons showing which things are in the cluster
-          const popupContent = `<p>${feature.properties.count} locations in this area</p>`;
+          const popupContent = `
+          <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
+            <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
+            <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
+            <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
+          </div>
+          `;
 
           const m = L.marker(latlng, {
             pane: 'CustomMarkerPane',
