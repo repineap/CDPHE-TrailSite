@@ -565,16 +565,16 @@ export class MapComponent implements AfterViewInit, OnChanges {
       });
     }
 
-    // this.map.on('baselayerchange', () => {
-    //   markers.forEach((marker, i) => {
-    //     marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), centroidShapes[i])
-    //   });
+    this.map.on('baselayerchange', () => {
+      markers.forEach((marker, i) => {
+        marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), centroidShapes[i])
+      });
 
-    //   if (this.map.hasLayer(centroidGroup)) {
-    //     centroidGroup.removeFrom(this.map);
-    //     this.map.addLayer(centroidGroup);
-    //   }
-    // });
+      if (this.map.hasLayer(centroidGroup)) {
+        centroidGroup.removeFrom(this.map);
+        this.map.addLayer(centroidGroup);
+      }
+    });
 
     markers.forEach((marker, i) => {
       marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), centroidShapes[i])
