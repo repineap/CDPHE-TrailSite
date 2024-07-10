@@ -96,3 +96,10 @@
   margin-top: 2px;
   font: 1em arial;
 }
+
+/* Mobile screen */
+@media (max-width: 1024px) {
+  .legend {
+    display: none;
+  }
+}

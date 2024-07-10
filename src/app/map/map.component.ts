@@ -267,9 +267,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
       aqi.style = this._styleService.getStyleForAQI(aqi.styleUrl);
     });
 
-    legend.onAdd = function (map) {
+    legend.onAdd = (map) => {
       var div = L.DomUtil.create("div", "legend");
-      div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Levels<a></h4>";
+      div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Legend<a></h4>";
 
       aqiLevels.forEach((aqi) => {
         div.innerHTML += `<i style="background: ${aqi.style.color + 'dd'}"></i><span>${aqi.name}</span><br>`
@@ -277,6 +277,25 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
       return div;
     };
+
+    this.map.addControl(legend);
+  }
+
+  private initShapeLegend() {
+    var legend = L.control.layers(undefined, undefined, { position: "bottomright" });
+
+    legend.onAdd = (map) => {
+      var div = L.DomUtil.create('div', 'legend');
+
+      div.innerHTML += "<h4>Shape Legend</h4>";
+
+      div.innerHTML += '<i style="background-color: #999999; border-radius: 50%; border: 2px solid black"></i><span>Multiple Types</span><br>';
+      div.innerHTML += '<i style="background-color: #999999; border: 2px solid black"></i><span>Hiking Only</span><br>';
+      div.innerHTML += '<i style="background-color: #999999; rotate: 45deg; border: 2px solid black"></i><span>Camping Only</span><br>';
+      div.innerHTML += '<i style="background-color: #999999; border-radius: 50% 0; border: 2px solid black"></i><span>Fishing Only</span><br>';
+
+      return div
+    }
 
     this.map.addControl(legend);
   }
@@ -627,6 +646,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         this.initFacilityLayer();
         this.initCentroidLayer();
         this.initAQILegend();
+        this.initShapeLegend();
       }
     });
   }
