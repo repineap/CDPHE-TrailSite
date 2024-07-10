@@ -9,6 +9,7 @@ import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
 import { Facility, FacilityProperties, TrailheadProperties } from '../geojson-typing';
+import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -28,24 +29,20 @@ L.Marker.prototype.options.icon = iconDefault;
 @Component({
   selector: 'app-map',
   standalone: true,
-  imports: [],
+  imports: [NgIf],
   templateUrl: './map.component.html',
   styleUrl: './map.component.css'
 })
 export class MapComponent implements AfterViewInit, OnChanges {
   private map!: L.Map;
   private trails: any;
-  private todayAqiData: any;
+  public todayAqiData: any;
   private todayColoradoAqiData: any
   private tomorrowAqiData: any;
   private tomorrowColoradoAqiData: any
   private tomorrowAqiLayer!: L.GeoJSON;
   private trailheadData: any;
-  private trailheadCoordinates: any;
   private facilityData: any;
-  private fishingCoordinates: any;
-  private campingCoordinates: any;
-  private facilityCoordinates: any;
 
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
@@ -481,8 +478,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     for (const k of centroidKCounts) {
       const centroidPoints = skmeans([...trailheadCoordinates, ...fishingCoordinates, ...campingCoordinates], k, 'kmpp');
-
-      console.log(centroidPoints);
 
       const points = Array(k);
 

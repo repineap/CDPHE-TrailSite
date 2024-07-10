@@ -13,11 +13,13 @@ export class ShapeService {
   }
 
   getTodayAQIShapes() {
-    return this._http.get('/assets/data/today_aqi.geojson');
+    return this._http.get('https://aarepinecdphe.pythonanywhere.com/todayAQI');
+    // return this._http.get('/assets/data/today_aqi.geojson');
   }
 
   getTomorrowAQIShapes() {
-    return this._http.get('/assets/data/tomorrow_aqi.geojson');
+    return this._http.get('https://aarepinecdphe.pythonanywhere.com/tomorrowAQI');
+    // return this._http.get('/assets/data/tomorrow_aqi.geojson');
   }
 
   getTrailheadShapes() {
