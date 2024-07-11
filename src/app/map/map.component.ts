@@ -82,10 +82,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.customMarkerPane.style.zIndex = '600';
 
     OpenStreetMap_Mapnik.addTo(this.map);
-    this.layerControl = L.control.layers();
+    this.layerControl = L.control.layers(undefined, undefined, { collapsed: false });
     this.layerControl.addTo(this.map);
 
     this.selectedLocationMarker = L.marker([39, -105.7821]);
+
+    this.map.on('moveend', () => {
+      this.mapBoundsChange.emit(this.map.getBounds());
+    });
   }
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
@@ -115,10 +119,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
           <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(feature.properties)}</p>`;
         layer.bindPopup(popupContent);
       }
-    });
-
-    this.map.on('moveend', () => {
-      this.mapBoundsChange.emit(this.map.getBounds());
     });
 
     this.layerControl.addOverlay(trailLayer, "Trails");
@@ -191,11 +191,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
     }
 
     const aqiLayer = L.geoJSON(this.todayAqiData, {
+      interactive: false,
       pane: 'AQIPane',
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
-      onEachFeature: (feature, layer) => {
-        layer.bindPopup(feature.properties.description);
-      }
+      // onEachFeature: (feature, layer) => {
+      //   layer.bindPopup(feature.properties.description);
+      // },
     });
 
     aqiLayer.addTo(this.map);
@@ -214,11 +215,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
     }
 
     this.tomorrowAqiLayer = L.geoJSON(this.tomorrowAqiData, {
+      interactive: false,
       pane: 'AQIPane',
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
-      onEachFeature: (feature, layer) => {
-        layer.bindPopup(feature.properties.description);
-      }
+      // onEachFeature: (feature, layer) => {
+      //   layer.bindPopup(feature.properties.description);
+      // }
     });
 
     this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
@@ -266,10 +268,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     legend.onAdd = (map) => {
       var div = L.DomUtil.create("div", "legend");
-      div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Legend<a></h4>";
+      div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Information<a></h4>";
 
       aqiLevels.forEach((aqi) => {
-        div.innerHTML += `<i style="background: ${aqi.style.color + 'dd'}"></i><span>${aqi.name}</span><br>`
+        div.innerHTML += `<i style="background: ${aqi.style.color + 'dd'}; border: 1px solid black"></i><span>${aqi.name}</span><br>`
       })
 
       return div;
@@ -336,6 +338,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
       markers.forEach((marker) => {
         marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Trailhead');
       });
+
+      if (this.map.hasLayer(trailheadLayer)) {
+        trailheadLayer.removeFrom(this.map);
+        trailheadLayer.addTo(this.map);
+      }
     });
 
     markers.forEach((marker) => {
@@ -470,7 +477,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const campingStartIdx = trailheadEndIdx + 1;
     const campingEndIdx = campingStartIdx + campingCoordinates.length - 1;
 
-    const centroidKCounts = [25, 50, 100, 200, 300];
+    const centroidKCounts = [25, 50, 150, 250, 400];
     const centroidLayers: L.GeoJSON[] = [];
     const centroidCounts: number[] = [];
     const centroidShapes: string[] = [];
@@ -619,10 +626,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   ngAfterViewInit(): void {
     this.initMap();
-    this._shapeService.getCotrexShapes().subscribe(trails => {
-      this.trails = trails;
-      this.initTrailsLayer(false);
-    });
+    // this._shapeService.getCotrexShapes().subscribe(trails => {
+    //   this.trails = trails;
+    //   this.initTrailsLayer(false);
+    // });
     forkJoin({
       todayAqiData: this._shapeService.getTodayAQIShapes(),
       tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
@@ -648,7 +655,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
-      console.log(changes['trailheadSelected'].currentValue);
       const coordinates = changes['trailheadSelected'].currentValue;
       this.map.setView([coordinates[1], coordinates[0]], 13);
       this.selectedLocationMarker.setLatLng([coordinates[1], coordinates[0]]);
