@@ -49,10 +49,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private locationPane!: HTMLElement;
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
-  private selectedLocationMarker!: L.Marker
+  private selectedLocationMarker!: L.Marker;
+  private mapLayers: { [key: string]: L.Layer} = {};
 
   @Input() trailheadSelected: [number, number] = [0, 0];
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
+
+  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -92,7 +95,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
   }
 
-  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
+  private trackLayer(name: string, layer: L.Layer) {
+    this.mapLayers[name] = layer;
+  }
 
   private initTrailsLayer(combineByPlaceID: boolean) {
     if (combineByPlaceID) {
@@ -120,6 +125,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
         layer.bindPopup(popupContent);
       }
     });
+
+    this.trackLayer('Trails', trailLayer);
 
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
@@ -201,6 +208,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     aqiLayer.addTo(this.map);
 
+    this.trackLayer('TodayAQI', aqiLayer);
+
     this.layerControl.addBaseLayer(aqiLayer, "Today's AQI Levels")
   }
 
@@ -223,6 +232,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
       // }
     });
 
+    this.trackLayer('TomorrowAQI', this.tomorrowAqiLayer);
+
     this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
   }
 
@@ -233,31 +244,37 @@ export class MapComponent implements AfterViewInit, OnChanges {
       {
         styleUrl: '#Good',
         name: 'Good',
+        styleIndex: 0,
         style: {} as any
       },
       {
         styleUrl: '#Moderate',
         name: 'Moderate',
+        styleIndex: 1,
         style: {} as any
       },
       {
         styleUrl: '#UnhealthySG',
         name: 'Unhealthy for Sensitive Groups',
+        styleIndex: 2,
         style: {} as any
       },
       {
         styleUrl: '#Unhealthy',
         name: 'Unhealthy',
+        styleIndex: 3,
         style: {} as any
       },
       {
         styleUrl: '#VeryUnhealthy',
         name: 'Very Unhealthy',
+        styleIndex: 4,
         style: {} as any
       },
       {
         styleUrl: '#Hazardous',
         name: 'Hazardous',
+        styleIndex: 5,
         style: {} as any
       }
     ];
@@ -271,13 +288,28 @@ export class MapComponent implements AfterViewInit, OnChanges {
       div.innerHTML += "<h4><a href=\"https://www.airnow.gov/aqi/aqi-basics/\" target=\"_blank\">AQI Information<a></h4>";
 
       aqiLevels.forEach((aqi) => {
-        div.innerHTML += `<i style="background: ${aqi.style.color + 'dd'}; border: 1px solid black"></i><span>${aqi.name}</span><br>`
-      })
+        const checkboxContainer = L.DomUtil.create('div', 'flex items-center me-4 legend-checkbox', div);
+        const checkbox = L.DomUtil.create('input', 'legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600', checkboxContainer);
+        checkbox.type = 'checkbox';
+        checkbox.style.accentColor = aqi.style.color;
+        checkbox.style.border = '1px solid black';
+        checkbox.checked = true;
+        checkbox.addEventListener('click', () => this.aqiCheckboxClicked(aqi.styleIndex, checkbox.checked));
+
+        const label = L.DomUtil.create('label', 'ms-1 text-sm font-medium text-gray-900 dark:text-gray-300', checkboxContainer);
+        label.htmlFor = checkbox.id;
+        label.textContent = aqi.name;
+      });
 
       return div;
     };
 
     this.map.addControl(legend);
+  }
+
+  private aqiCheckboxClicked(styleIndex: number, checked: boolean) {
+    console.log(styleIndex);
+    console.log(checked);
   }
 
   private initShapeLegend() {
@@ -349,10 +381,17 @@ export class MapComponent implements AfterViewInit, OnChanges {
       marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Trailhead');
     });
 
+    this.trackLayer('Trailheads', trailheadLayer);
+
     this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
   }
 
   private initFacilityLayer() {
+
+    //Change so that it pre-computes it as
+    // Top Layer
+    // Today Layer - Tomorrow Layer
+    // Good - Sens - ... - etc.
 
     const fishingMarkers: L.Marker[] = [];
     const campingMarkers: L.Marker[] = [];
@@ -410,6 +449,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
         layer.bindPopup(popupContent);
       },
     });
+
+    this.trackLayer('Fishing', fishingLayer);
+    this.trackLayer('Camping', campingLayer);
 
     this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
     this.layerControl.addOverlay(campingLayer, "Camping Facilities");
