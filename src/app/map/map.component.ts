@@ -8,7 +8,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { Facility, FacilityProperties, TrailheadProperties } from '../geojson-typing';
+import { Facility, FacilityProperties, Trailhead, TrailheadProperties } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -25,6 +25,8 @@ const iconDefault = L.icon({
   shadowSize: [41, 41]
 });
 L.Marker.prototype.options.icon = iconDefault;
+
+const aqiStyleUrls = ["#Unavailable", "#Invisible", "#Good", "#Moderate", "#UnhealthySG", "#Unhealthy", "#VeryUnhealthy", "#Hazardous"];
 
 @Component({
   selector: 'app-map',
@@ -50,7 +52,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
   private selectedLocationMarker!: L.Marker;
-  private mapLayers: { [key: string]: L.Layer} = {};
+  private mapLayers: { [key: string]: L.Layer } = {};
 
   @Input() trailheadSelected: [number, number] = [0, 0];
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
@@ -331,31 +333,82 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.map.addControl(legend);
   }
 
+  private styleTrailheadData() {
+    this.trailheadData.features.forEach((th: any) => {
+      th.properties['todayAQI'] = this.getTodayAQIColor(th.geometry.coordinates);
+      th.properties['tomorrowAQI'] = this.getTomorrowAQIColor(th.geometry.coordinates);
+    });
+  }
+
   private initTrailheadLayer() {
+
+    this.styleTrailheadData()
     const markers: L.Marker[] = [];
 
-    const trailheadLayer = L.geoJSON(this.trailheadData, {
-      pointToLayer: (feature, latlng) => {
-        const m = L.marker(latlng, {
-          pane: 'CustomMarkerPane'
-        });
-        markers.push(m);
-        return m;
-      },
-      onEachFeature: (feature, layer) => {
-        const properties = feature.properties as TrailheadProperties;
+    //TODO: Index in and remove the layers that are deactivated on the checkboxes
+    //Possibly store in a this. variable, but I would rather not do that
+    const todayAQILayers: L.Layer[] = [];
+    const tomorrowAQILayers: L.Layer[] = [];
 
-        const popupContent = `
-        <div class="popup">
-          <img src="assets/data/hiker-icon.svg" alt="Hiker Icon">
-          <p>${properties.name}</p>
-        </div>
-        `;
+    aqiStyleUrls.forEach((style) => {
+      todayAQILayers.push(
+        L.geoJSON(this.trailheadData, {
+          filter: (feature) => {
+            return feature.properties.todayAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Trailhead')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as TrailheadProperties;
 
-        layer.bindPopup(popupContent);
-      },
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/hiker-icon.svg" alt="Hiker Icon">
+              <p>${properties.name}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+
+      tomorrowAQILayers.push(
+        L.geoJSON(this.trailheadData, {
+          filter: (feature) => {
+            return feature.properties.tomorrowAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Trailhead')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as TrailheadProperties;
+
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/hiker-icon.svg" alt="Hiker Icon">
+              <p>${properties.name}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
     });
 
+    const todayTrailheadLayerGroup = L.layerGroup(todayAQILayers);
+    const tomorrowTrailheadLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const trailheadLayer = L.layerGroup([todayTrailheadLayerGroup]);
 
     this.map.on('zoomend', () => {
       const mapZoom = this.map.getZoom();
@@ -367,13 +420,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
 
     this.map.on('baselayerchange', () => {
-      markers.forEach((marker) => {
-        marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Trailhead');
-      });
-
-      if (this.map.hasLayer(trailheadLayer)) {
-        trailheadLayer.removeFrom(this.map);
-        trailheadLayer.addTo(this.map);
+      if (trailheadLayer.hasLayer(todayTrailheadLayerGroup)) {
+        trailheadLayer.clearLayers();
+        trailheadLayer.addLayer(tomorrowTrailheadLayerGroup);
+      } else {
+        trailheadLayer.clearLayers();
+        trailheadLayer.addLayer(todayTrailheadLayerGroup);
       }
     });
 
@@ -386,112 +438,190 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
   }
 
+  private styleFacilityData() {
+    this.facilityData.features.forEach((fac: any) => {
+      fac.properties['todayAQI'] = this.getTodayAQIColor(fac.geometry.coordinates);
+      fac.properties['tomorrowAQI'] = this.getTomorrowAQIColor(fac.geometry.coordinates);
+    });
+  }
+
   private initFacilityLayer() {
+    this.styleFacilityData();
+    this.initCampingLayer();
+    this.initFishingLayer();
+  }
 
-    //Change so that it pre-computes it as
-    // Top Layer
-    // Today Layer - Tomorrow Layer
-    // Good - Sens - ... - etc.
-
-    const fishingMarkers: L.Marker[] = [];
-    const campingMarkers: L.Marker[] = [];
+  private initFishingLayer() {
     const fishingFacilities = ['Boat Ramp', 'Boating', 'Fishing', 'Fishing - ADA Accessible', 'Marina'];
-    const campingFacilities = ['Cabin', 'Campground', 'Campsite', 'Group Campground', 'RV Campground, Yurt'];
 
-    const fishingLayer = L.geoJSON(this.facilityData, {
-      pane: 'LocationPane',
-      filter: (feature) => {
-        return feature.properties && fishingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE);
-      },
-      pointToLayer: (feature, latlng) => {
-        const m = L.marker(latlng, {
-          pane: 'CustomMarkerPane'
-        });
-        fishingMarkers.push(m);
-        return m
-      },
-      onEachFeature: (feature, layer) => {
-        const properties = feature.properties;
+    const todayAQILayers: L.Layer[] = [];
+    const tomorrowAQILayers: L.Layer[] = [];
 
-        const popupContent = `
-        <div class="popup">
-          <img src="assets/data/fishing-rod-icon.svg" alt="Fishing Rod Icon">
-          <p>${properties.FAC_NAME}</p>
-        </div>
-        `;
+    aqiStyleUrls.forEach((style) => {
+      todayAQILayers.push(
+        L.geoJSON(this.facilityData, {
+          filter: (feature) => {
+            return fishingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.todayAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Fishing')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as FacilityProperties;
 
-        layer.bindPopup(popupContent);
-      },
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/fishing-rod-icon.svg" alt="Fishing Rod Icon">
+              <p>${properties.FAC_NAME}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+
+      tomorrowAQILayers.push(
+        L.geoJSON(this.facilityData, {
+          filter: (feature) => {
+            return fishingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.tomorrowAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Fishing')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as FacilityProperties;
+
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/fishing-rod-icon.svg" alt="Fishing Rod Icon">
+              <p>${properties.FAC_NAME}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
     });
 
-    const campingLayer = L.geoJSON(this.facilityData, {
-      pane: 'LocationPane',
-      filter: (feature) => {
-        return feature.properties && campingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE);
-      },
-      pointToLayer: (feature, latlng) => {
-        const m = L.marker(latlng, {
-          pane: 'CustomMarkerPane'
-        });
-        campingMarkers.push(m);
-        return m
-      },
-      onEachFeature: (feature, layer) => {
-        const properties = feature.properties;
-
-        const popupContent = `
-        <div class="popup">
-          <img src="assets/data/tent-icon.svg" alt="Tent Icon">
-          <p>${properties.FAC_NAME}</p>
-        </div>
-        `;
-
-        layer.bindPopup(popupContent);
-      },
-    });
-
-    this.trackLayer('Fishing', fishingLayer);
-    this.trackLayer('Camping', campingLayer);
+    const todayFishingLayerGroup = L.layerGroup(todayAQILayers);
+    const tomorrowFishingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const fishingLayer = L.layerGroup([todayFishingLayerGroup]);
 
     this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
-    this.layerControl.addOverlay(campingLayer, "Camping Facilities");
 
     this.map.on('zoomend', () => {
       if (this.map.getZoom() < 13) {
         this.map.removeLayer(fishingLayer);
-        this.map.removeLayer(campingLayer);
       } else {
         this.map.addLayer(fishingLayer);
+      }
+    });
+
+    this.map.on('baselayerchange', () => {
+      if (fishingLayer.hasLayer(todayFishingLayerGroup)) {
+        fishingLayer.clearLayers();
+        fishingLayer.addLayer(tomorrowFishingLayerGroup);
+      } else {
+        fishingLayer.clearLayers();
+        fishingLayer.addLayer(todayFishingLayerGroup);
+      }
+    });
+  }
+
+  private initCampingLayer() {
+    const campingFacilities = ['Cabin', 'Campground', 'Campsite', 'Group Campground', 'RV Campground, Yurt'];
+
+    const todayAQILayers: L.Layer[] = [];
+    const tomorrowAQILayers: L.Layer[] = [];
+
+    aqiStyleUrls.forEach((style) => {
+      todayAQILayers.push(
+        L.geoJSON(this.facilityData, {
+          filter: (feature) => {
+            return campingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.todayAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Camping')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as FacilityProperties;
+
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/tent-icon.svg" alt="Tent Icon">
+              <p>${properties.FAC_NAME}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+
+      tomorrowAQILayers.push(
+        L.geoJSON(this.facilityData, {
+          filter: (feature) => {
+            return campingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.tomorrowAQI.styleUrl === style;
+          },
+          pointToLayer: (feature, latlng) => {
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Camping')
+            });
+            return m;
+          },
+          onEachFeature: (feature, layer) => {
+            const properties = feature.properties as FacilityProperties;
+
+            const popupContent = `
+            <div class="popup">
+              <img src="assets/data/tent-icon.svg" alt="Tent Icon">
+              <p>${properties.FAC_NAME}</p>
+            </div>
+            `;
+
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+    });
+
+    const todayCampingLayerGroup = L.layerGroup(todayAQILayers);
+    const tomorrowCampingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const campingLayer = L.layerGroup([todayCampingLayerGroup]);
+
+    this.layerControl.addOverlay(campingLayer, "Camping Facilities");
+
+    this.map.on('zoomend', () => {
+      if (this.map.getZoom() < 13) {
+        this.map.removeLayer(campingLayer);
+      } else {
         this.map.addLayer(campingLayer);
       }
     });
 
     this.map.on('baselayerchange', () => {
-      campingMarkers.forEach((marker) => {
-        marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Camping')
-      });
-
-      if (this.map.hasLayer(campingLayer)) {
-        campingLayer.removeFrom(this.map);
-        campingLayer.addTo(this.map);
+      if (campingLayer.hasLayer(todayCampingLayerGroup)) {
+        campingLayer.clearLayers();
+        campingLayer.addLayer(tomorrowCampingLayerGroup);
+      } else {
+        campingLayer.clearLayers();
+        campingLayer.addLayer(todayCampingLayerGroup);
       }
-  
-      fishingMarkers.forEach((marker) => {
-        marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Fishing')
-      });
-
-      if (this.map.hasLayer(fishingLayer)) {
-        fishingLayer.removeFrom(this.map);
-        fishingLayer.addTo(this.map);
-      }
-    });
-
-    campingMarkers.forEach((marker) => {
-      marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Camping')
-    });
-
-    fishingMarkers.forEach((marker) => {
-      marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Fishing')
     });
   }
 
@@ -528,14 +658,19 @@ export class MapComponent implements AfterViewInit, OnChanges {
     for (const k of centroidKCounts) {
       const centroidPoints = skmeans([...trailheadCoordinates, ...fishingCoordinates, ...campingCoordinates], k, 'kmpp');
 
+      console.log(centroidPoints);
+
       const points = Array(k);
 
       for (let i = 0; i < k; i++) {
+        const coordinates = centroidPoints.centroids[i];
         points[i] = {
           count: 0,
           trailhead: false,
           camping: false,
-          fishing: false
+          fishing: false,
+          todayAQI: this.getTodayAQIColor(coordinates),
+          tomorrowAQI: this.getTomorrowAQIColor(coordinates)
         };
       };
 
@@ -551,10 +686,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
         points[idx].count += 1;
       });
 
-      const featureList = Array(k);
+      const todayFeatureList = Array(k);
 
       for (let i = 0; i < k; i++) {
-        featureList[i] = {
+        todayFeatureList[i] = {
           type: 'Feature',
           geometry: {
             type: 'Point',
@@ -564,12 +699,30 @@ export class MapComponent implements AfterViewInit, OnChanges {
         }
       }
 
-      const centroidGeoJSON = {
+      const todayCentroidGeoJSON = {
         type: 'FeatureCollection',
-        features: featureList
+        features: todayFeatureList
       };
 
-      const centroidLayer = L.geoJSON(centroidGeoJSON as any, {
+      const tomorrowFeatureList = Array(k);
+
+      for (let i = 0; i < k; i++) {
+        tomorrowFeatureList[i] = {
+          type: 'Feature',
+          geometry: {
+            type: 'Point',
+            coordinates: centroidPoints.centroids[i]
+          },
+          properties: points[i]
+        }
+      }
+
+      const tomorrowCentroidGeoJSON = {
+        type: 'FeatureCollection',
+        features: tomorrowFeatureList
+      };
+
+      const todayCentroidLayer = L.geoJSON(todayCentroidGeoJSON as any, {
         pointToLayer(feature, latlng) {
           const popupContent = `
           <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
@@ -599,7 +752,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         }
       });
 
-      centroidLayers.push(centroidLayer);
+      centroidLayers.push(todayCentroidLayer);
 
     }
 
@@ -644,6 +797,38 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
 
     this.map.addLayer(centroidGroup);
+  }
+
+  private getTodayAQIColor(coordinates: [number, number]) {
+    for (let feature of this.todayColoradoAqiData.features) {
+      const originalPolygon = feature.geometry;
+      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
+        return {
+          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
+          styleUrl: feature.properties.styleUrl
+        };
+      }
+    }
+    return {
+      color: 'black',
+      styleUrl: 'N/A'
+    };
+  }
+
+  private getTomorrowAQIColor(coordinates: [number, number]) {
+    for (let feature of this.tomorrowColoradoAqiData.features) {
+      const originalPolygon = feature.geometry;
+      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
+        return {
+          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
+          styleUrl: feature.properties.styleUrl
+        };
+      }
+    }
+    return {
+      color: 'black',
+      styleUrl: 'N/A'
+    };
   }
 
   private getClusterColor(latlng: L.LatLng): string {
