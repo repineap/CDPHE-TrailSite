@@ -1,6 +1,7 @@
 import { Component, AfterViewInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 
 import * as L from 'leaflet';
+import * as CL from '../custom-leaflet-shapes';
 import * as turf from '@turf/turf';
 import 'skmeans';
 
@@ -357,9 +358,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return feature.properties.todayAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.squareMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Trailhead')
+              radius: 7,
+              fillColor: feature.properties.todayAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -384,9 +390,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return feature.properties.tomorrowAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.squareMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Trailhead')
+              radius: 7,
+              fillColor: feature.properties.tomorrowAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -464,9 +475,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return fishingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.todayAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.lemonMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Fishing')
+              radius: 7,
+              fillColor: feature.properties.todayAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -491,9 +507,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return fishingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.tomorrowAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.lemonMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Fishing')
+              radius: 7,
+              fillColor: feature.properties.tomorrowAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -551,9 +572,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return campingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.todayAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.diamondMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.todayAQI.color, 'Camping')
+              radius: 7,
+              fillColor: feature.properties.todayAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -578,9 +604,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return campingFacilities.includes((feature.properties as FacilityProperties).d_FAC_TYPE) && feature.properties.tomorrowAQI.styleUrl === style;
           },
           pointToLayer: (feature, latlng) => {
-            const m = L.marker(latlng, {
+            const m = CL.diamondMarker(latlng, {
               pane: 'CustomMarkerPane',
-              icon: createCustomIcon(-1, feature.properties.tomorrowAQI.color, 'Camping')
+              radius: 7,
+              fillColor: feature.properties.tomorrowAQI.color,
+              fillOpacity: 1,
+              color: 'black',
+              weight: 2,
+              opacity: 1
             });
             return m;
           },
@@ -915,14 +946,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
 }
 
 function createCustomIcon(count: number, color: string, shape: string) {
-  const iconSize = count == -1 ? 15 : 30;
+  const iconSize = 30;
   const iconAnchor = iconSize / 2.0;
   if (shape === 'Multiple') {
     //Circle
     return L.divIcon({
       className: 'custom-div-icon',
       html: `<div class="trailhead-centroid" style="background-color: ${color}; border-radius: 50%; height: ${iconSize}px; width: ${iconSize}px">
-                  ${count == -1 ? '' : `<p class="centroid-text">${count}</p>`}</div>`,
+                  <p class="centroid-text">${count}</p></div>`,
       iconAnchor: [iconAnchor, iconAnchor]
     });
   } else if (shape === 'Trailhead') {
@@ -930,7 +961,7 @@ function createCustomIcon(count: number, color: string, shape: string) {
     return L.divIcon({
       className: 'custom-div-icon',
       html: `<div class="trailhead-centroid" style="background-color: ${color}; height: ${iconSize}px; width: ${iconSize}px">
-                  ${count == -1 ? '' : `<p class="centroid-text">${count}</p>`}</div>`,
+                  <p class="centroid-text">${count}</p></div>`,
       iconAnchor: [iconAnchor, iconAnchor]
     });
   } else if (shape === 'Camping') {
@@ -938,7 +969,7 @@ function createCustomIcon(count: number, color: string, shape: string) {
     return L.divIcon({
       className: 'custom-div-icon',
       html: `<div class="trailhead-centroid" style="background-color: ${color}; rotate: 45deg; height: ${iconSize}px; width: ${iconSize}px">
-                  ${count == -1 ? '' : `<p class="centroid-text" style="rotate: -45deg">${count}</p>`}</div>`,
+                  <p class="centroid-text" style="rotate: -45deg">${count}</p></div>`,
       iconAnchor: [iconAnchor, iconAnchor]
     });
   } else {
@@ -946,7 +977,7 @@ function createCustomIcon(count: number, color: string, shape: string) {
     return L.divIcon({
       className: 'custom-div-icon',
       html: `<div class="trailhead-centroid" style="background-color: ${color}; border-radius: 50% 0; height: ${iconSize}px; width: ${iconSize}px">
-                  ${count == -1 ? '' : `<p class="centroid-text">${count}</p>`}</div>`,
+                  <p class="centroid-text">${count}</p></div>`,
       iconAnchor: [iconAnchor, iconAnchor]
     });
   }
