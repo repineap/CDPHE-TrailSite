@@ -650,15 +650,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const campingEndIdx = campingStartIdx + campingCoordinates.length - 1;
 
     const centroidKCounts = [25, 50, 150, 250, 400];
-    const centroidLayers: L.GeoJSON[] = [];
-    const centroidCounts: number[] = [];
-    const centroidShapes: string[] = [];
-    const markers = [] as L.Marker[];
+    const todayCentroidLayers: L.Layer[] = [];
+    const tomorrowCentroidLayers: L.Layer[] = [];
 
     for (const k of centroidKCounts) {
       const centroidPoints = skmeans([...trailheadCoordinates, ...fishingCoordinates, ...campingCoordinates], k, 'kmpp');
-
-      console.log(centroidPoints);
 
       const points = Array(k);
 
@@ -704,6 +700,35 @@ export class MapComponent implements AfterViewInit, OnChanges {
         features: todayFeatureList
       };
 
+      const todayCentroidLayer = L.geoJSON(todayCentroidGeoJSON as any, {
+        pointToLayer(feature, latlng) {
+          const popupContent = `
+          <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
+            <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
+            <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
+            <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
+          </div>
+          `;
+          let centroidShape = '';
+          if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
+            centroidShape = 'Multiple';
+          } else if (feature.properties.trailhead) {
+            centroidShape = 'Trailhead';
+          } else if (feature.properties.camping) {
+            centroidShape = 'Camping';
+          } else {
+            centroidShape = 'Fishing';
+          }
+          const m = L.marker(latlng, {
+            pane: 'CustomMarkerPane',
+            icon: createCustomIcon(feature.properties.count, feature.properties.todayAQI.color, centroidShape)
+          }).bindPopup(popupContent);
+          return m;
+        }
+      });
+
+      todayCentroidLayers.push(todayCentroidLayer);
+
       const tomorrowFeatureList = Array(k);
 
       for (let i = 0; i < k; i++) {
@@ -722,7 +747,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         features: tomorrowFeatureList
       };
 
-      const todayCentroidLayer = L.geoJSON(todayCentroidGeoJSON as any, {
+      const tomorrowCentroidLayer = L.geoJSON(tomorrowCentroidGeoJSON as any, {
         pointToLayer(feature, latlng) {
           const popupContent = `
           <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
@@ -731,12 +756,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
             <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
           </div>
           `;
-
-          const m = L.marker(latlng, {
-            pane: 'CustomMarkerPane',
-          }).bindPopup(popupContent);
-          markers.push(m);
-          centroidCounts.push(feature.properties.count);
           let centroidShape = '';
           if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
             centroidShape = 'Multiple';
@@ -747,53 +766,58 @@ export class MapComponent implements AfterViewInit, OnChanges {
           } else {
             centroidShape = 'Fishing';
           }
-          centroidShapes.push(centroidShape);
+          const m = L.marker(latlng, {
+            pane: 'CustomMarkerPane',
+            icon: createCustomIcon(feature.properties.count, feature.properties.tomorrowAQI.color, centroidShape)
+          }).bindPopup(popupContent);
           return m;
         }
       });
 
-      centroidLayers.push(todayCentroidLayer);
+      tomorrowCentroidLayers.push(tomorrowCentroidLayer);
 
     }
 
     const zoomStart = 8;
     const zoomEnd = 13;
 
-    const centroidGroup = L.layerGroup([centroidLayers[0]]);
-    // const centroidGroup = L.layerGroup(centroidLayers);
+    const todayCentroidGroup = L.layerGroup([todayCentroidLayers[0]]);
+    const tomorrowCentroidGroup = L.layerGroup([tomorrowCentroidLayers[0]]);
+
+    const centroidGroup = L.layerGroup([todayCentroidGroup])
 
     this.map.on('zoomend', () => {
       if (this.map.getZoom() <= zoomStart) {
-        centroidGroup.clearLayers();
-        centroidGroup.addLayer(centroidLayers[0]);
+        todayCentroidGroup.clearLayers();
+        todayCentroidGroup.addLayer(todayCentroidLayers[0]);
+        tomorrowCentroidGroup.clearLayers();
+        tomorrowCentroidGroup.addLayer(tomorrowCentroidLayers[0]);
       }
       if (this.map.getZoom() >= zoomEnd) {
-        centroidGroup.clearLayers();
+        todayCentroidGroup.clearLayers();
+        tomorrowCentroidGroup.clearLayers();
       }
     })
 
     for (let i = zoomStart + 1; i < zoomEnd; i++) {
       this.map.on('zoomend', () => {
         if (this.map.getZoom() == i) {
-          centroidGroup.clearLayers();
-          centroidGroup.addLayer(centroidLayers[i - zoomStart]);
+          todayCentroidGroup.clearLayers();
+          todayCentroidGroup.addLayer(todayCentroidLayers[i - zoomStart]);
+          tomorrowCentroidGroup.clearLayers();
+          tomorrowCentroidGroup.addLayer(tomorrowCentroidLayers[i - zoomStart]);
         }
       });
     }
 
     this.map.on('baselayerchange', () => {
-      markers.forEach((marker, i) => {
-        marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), centroidShapes[i])
-      });
-
-      if (this.map.hasLayer(centroidGroup)) {
-        centroidGroup.removeFrom(this.map);
-        this.map.addLayer(centroidGroup);
+      if (centroidGroup.hasLayer(todayCentroidGroup)) {
+        centroidGroup.clearLayers();
+        centroidGroup.addLayer(tomorrowCentroidGroup);
+      } else {
+        centroidGroup.clearLayers();
+        centroidGroup.addLayer(todayCentroidGroup);
       }
-    });
-
-    markers.forEach((marker, i) => {
-      marker.options.icon = createCustomIcon(centroidCounts[i], this.getClusterColor(marker.getLatLng()), centroidShapes[i])
     });
 
     this.map.addLayer(centroidGroup);
