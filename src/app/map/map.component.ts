@@ -9,7 +9,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { Facility, FacilityProperties, Trailhead, TrailheadProperties } from '../geojson-typing';
+import { Facility, FacilityProperties, TrailheadProperties } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -27,7 +27,14 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
-const aqiStyleUrls = ["#Unavailable", "#Invisible", "#Good", "#Moderate", "#UnhealthySG", "#Unhealthy", "#VeryUnhealthy", "#Hazardous"];
+const aqiStyleUrls = ["#Good", "#Moderate", "#UnhealthySG", "#Unhealthy", "#VeryUnhealthy", "#Hazardous"];
+
+interface AQIStructure {
+  layerGroup: L.LayerGroup
+  layers: L.Layer[]
+}
+
+const END_GROUPING_ZOOM = 13;
 
 @Component({
   selector: 'app-map',
@@ -53,7 +60,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
   private selectedLocationMarker!: L.Marker;
-  private mapLayers: { [key: string]: L.Layer } = {};
+
+  private AQILayerStructure: AQIStructure[] = [];
 
   @Input() trailheadSelected: [number, number] = [0, 0];
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
@@ -64,8 +72,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     //Intializes the map to the center of Colorado with a zoom of 8
     this.map = L.map('map', {
       center: [39, -105.7821],
-      zoom: 8,
-      //Makes it much less laggy, not sure why
+      zoom: END_GROUPING_ZOOM - 5,
       preferCanvas: true
     });
 
@@ -98,10 +105,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
   }
 
-  private trackLayer(name: string, layer: L.Layer) {
-    this.mapLayers[name] = layer;
-  }
-
   private initTrailsLayer(combineByPlaceID: boolean) {
     if (combineByPlaceID) {
       this.trails = this.groupTrails(this.trails);
@@ -128,8 +131,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
         layer.bindPopup(popupContent);
       }
     });
-
-    this.trackLayer('Trails', trailLayer);
 
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
@@ -211,8 +212,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     aqiLayer.addTo(this.map);
 
-    this.trackLayer('TodayAQI', aqiLayer);
-
     this.layerControl.addBaseLayer(aqiLayer, "Today's AQI Levels")
   }
 
@@ -234,8 +233,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
       //   layer.bindPopup(feature.properties.description);
       // }
     });
-
-    this.trackLayer('TomorrowAQI', this.tomorrowAqiLayer);
 
     this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
   }
@@ -297,6 +294,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         checkbox.style.accentColor = aqi.style.color;
         checkbox.style.border = '1px solid black';
         checkbox.checked = true;
+        checkbox.value = aqi.styleUrl;
         checkbox.addEventListener('click', () => this.aqiCheckboxClicked(aqi.styleIndex, checkbox.checked));
 
         const label = L.DomUtil.create('label', 'ms-1 text-sm font-medium text-gray-900 dark:text-gray-300', checkboxContainer);
@@ -311,8 +309,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private aqiCheckboxClicked(styleIndex: number, checked: boolean) {
-    console.log(styleIndex);
-    console.log(checked);
+    this.AQILayerStructure.forEach((structure) => {
+      if (checked) {
+        structure.layerGroup.addLayer(structure.layers[styleIndex]);
+      } else {
+        structure.layerGroup.removeLayer(structure.layers[styleIndex]);
+      }
+    });
   }
 
   private initShapeLegend() {
@@ -346,8 +349,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.styleTrailheadData()
     const markers: L.Marker[] = [];
 
-    //TODO: Index in and remove the layers that are deactivated on the checkboxes
-    //Possibly store in a this. variable, but I would rather not do that
     const todayAQILayers: L.Layer[] = [];
     const tomorrowAQILayers: L.Layer[] = [];
 
@@ -416,17 +417,39 @@ export class MapComponent implements AfterViewInit, OnChanges {
         })
       );
     });
-
     const todayTrailheadLayerGroup = L.layerGroup(todayAQILayers);
+    this.AQILayerStructure.push({ layerGroup: todayTrailheadLayerGroup, layers: todayAQILayers });
     const tomorrowTrailheadLayerGroup = L.layerGroup(tomorrowAQILayers);
+    this.AQILayerStructure.push({ layerGroup: tomorrowTrailheadLayerGroup, layers: tomorrowAQILayers });
     const trailheadLayer = L.layerGroup([todayTrailheadLayerGroup]);
 
+    let autoToggle = true;
+
     this.map.on('zoomend', () => {
+      if (!autoToggle) {
+        return;
+      }
       const mapZoom = this.map.getZoom();
-      if (mapZoom < 13) {
+      if (mapZoom < END_GROUPING_ZOOM) {
         trailheadLayer.removeFrom(this.map);
       } else {
         trailheadLayer.addTo(this.map);
+      }
+    });
+
+    trailheadLayer.on('add', () => {
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
+      }
+    });
+
+    trailheadLayer.on('remove', () => {
+      if (this.map.getZoom() >= END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
       }
     });
 
@@ -443,8 +466,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
     markers.forEach((marker) => {
       marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Trailhead');
     });
-
-    this.trackLayer('Trailheads', trailheadLayer);
 
     this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
   }
@@ -535,16 +556,39 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
 
     const todayFishingLayerGroup = L.layerGroup(todayAQILayers);
+    this.AQILayerStructure.push({ layerGroup: todayFishingLayerGroup, layers: todayAQILayers });
     const tomorrowFishingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    this.AQILayerStructure.push({ layerGroup: tomorrowFishingLayerGroup, layers: tomorrowAQILayers });
     const fishingLayer = L.layerGroup([todayFishingLayerGroup]);
 
     this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
 
+    let autoToggle = true;
+
     this.map.on('zoomend', () => {
-      if (this.map.getZoom() < 13) {
+      if (!autoToggle) {
+        return;
+      }
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
         this.map.removeLayer(fishingLayer);
       } else {
         this.map.addLayer(fishingLayer);
+      }
+    });
+
+    fishingLayer.on('add', () => {
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
+      }
+    });
+
+    fishingLayer.on('remove', () => {
+      if (this.map.getZoom() >= END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
       }
     });
 
@@ -632,16 +676,39 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
 
     const todayCampingLayerGroup = L.layerGroup(todayAQILayers);
+    this.AQILayerStructure.push({ layerGroup: todayCampingLayerGroup, layers: todayAQILayers });
     const tomorrowCampingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    this.AQILayerStructure.push({ layerGroup: tomorrowCampingLayerGroup, layers: tomorrowAQILayers });
     const campingLayer = L.layerGroup([todayCampingLayerGroup]);
 
     this.layerControl.addOverlay(campingLayer, "Camping Facilities");
 
+    let autoToggle = true;
+
     this.map.on('zoomend', () => {
-      if (this.map.getZoom() < 13) {
+      if (!autoToggle) {
+        return;
+      }
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
         this.map.removeLayer(campingLayer);
       } else {
         this.map.addLayer(campingLayer);
+      }
+    });
+
+    campingLayer.on('add', () => {
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
+      }
+    });
+
+    campingLayer.on('remove', () => {
+      if (this.map.getZoom() >= END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
       }
     });
 
@@ -731,35 +798,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
         features: todayFeatureList
       };
 
-      const todayCentroidLayer = L.geoJSON(todayCentroidGeoJSON as any, {
-        pointToLayer(feature, latlng) {
-          const popupContent = `
-          <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
-            <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
-            <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
-            <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
-          </div>
-          `;
-          let centroidShape = '';
-          if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
-            centroidShape = 'Multiple';
-          } else if (feature.properties.trailhead) {
-            centroidShape = 'Trailhead';
-          } else if (feature.properties.camping) {
-            centroidShape = 'Camping';
-          } else {
-            centroidShape = 'Fishing';
-          }
-          const m = L.marker(latlng, {
-            pane: 'CustomMarkerPane',
-            icon: createCustomIcon(feature.properties.count, feature.properties.todayAQI.color, centroidShape)
-          }).bindPopup(popupContent);
-          return m;
-        }
-      });
-
-      todayCentroidLayers.push(todayCentroidLayer);
-
       const tomorrowFeatureList = Array(k);
 
       for (let i = 0; i < k; i++) {
@@ -778,39 +816,85 @@ export class MapComponent implements AfterViewInit, OnChanges {
         features: tomorrowFeatureList
       };
 
-      const tomorrowCentroidLayer = L.geoJSON(tomorrowCentroidGeoJSON as any, {
-        pointToLayer(feature, latlng) {
-          const popupContent = `
-          <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
-            <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
-            <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
-            <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
-          </div>
-          `;
-          let centroidShape = '';
-          if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
-            centroidShape = 'Multiple';
-          } else if (feature.properties.trailhead) {
-            centroidShape = 'Trailhead';
-          } else if (feature.properties.camping) {
-            centroidShape = 'Camping';
-          } else {
-            centroidShape = 'Fishing';
+      const todayKCentroidLayers: L.Layer[] = [];
+      const tomorrowKCentroidLayers: L.Layer[] = [];
+
+      aqiStyleUrls.forEach((style) => {
+        const todayCentroidLayer = L.geoJSON(todayCentroidGeoJSON as any, {
+          filter: (feature) => {
+            return feature.properties.todayAQI.styleUrl === style
+          },
+          pointToLayer(feature, latlng) {
+            const popupContent = `
+            <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
+              <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
+              <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
+              <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
+            </div>
+            `;
+            let centroidShape = '';
+            if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
+              centroidShape = 'Multiple';
+            } else if (feature.properties.trailhead) {
+              centroidShape = 'Trailhead';
+            } else if (feature.properties.camping) {
+              centroidShape = 'Camping';
+            } else {
+              centroidShape = 'Fishing';
+            }
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(feature.properties.count, feature.properties.todayAQI.color, centroidShape)
+            }).bindPopup(popupContent);
+            return m;
           }
-          const m = L.marker(latlng, {
-            pane: 'CustomMarkerPane',
-            icon: createCustomIcon(feature.properties.count, feature.properties.tomorrowAQI.color, centroidShape)
-          }).bindPopup(popupContent);
-          return m;
-        }
+        });
+  
+        todayKCentroidLayers.push(todayCentroidLayer);
+  
+        const tomorrowCentroidLayer = L.geoJSON(tomorrowCentroidGeoJSON as any, {
+          filter: (feature) => {
+            return feature.properties.tomorrowAQI.styleUrl === style
+          },
+          pointToLayer(feature, latlng) {
+            const popupContent = `
+            <div class="grid grid-cols-3 gap-2 w-[90px] h-[30px]">
+              <img src="assets/data/hiker-${feature.properties.trailhead ? 'green' : 'red'}.svg" alt="Hiker Icon">
+              <img src="assets/data/tent-${feature.properties.camping ? 'green' : 'red'}.svg" alt="Tent Icon">
+              <img src="assets/data/fishing-rod-${feature.properties.fishing ? 'green' : 'red'}.svg" alt="Fishing Icon">
+            </div>
+            `;
+            let centroidShape = '';
+            if ((feature.properties.trailhead && feature.properties.camping) || (feature.properties.trailhead && feature.properties.fishing) || (feature.properties.fishing && feature.properties.camping)) {
+              centroidShape = 'Multiple';
+            } else if (feature.properties.trailhead) {
+              centroidShape = 'Trailhead';
+            } else if (feature.properties.camping) {
+              centroidShape = 'Camping';
+            } else {
+              centroidShape = 'Fishing';
+            }
+            const m = L.marker(latlng, {
+              pane: 'CustomMarkerPane',
+              icon: createCustomIcon(feature.properties.count, feature.properties.tomorrowAQI.color, centroidShape)
+            }).bindPopup(popupContent);
+            return m;
+          }
+        });
+  
+        tomorrowKCentroidLayers.push(tomorrowCentroidLayer);
       });
 
-      tomorrowCentroidLayers.push(tomorrowCentroidLayer);
+      const todayKLayerGroup = L.layerGroup(todayKCentroidLayers);
+      this.AQILayerStructure.push( {layerGroup: todayKLayerGroup, layers: todayKCentroidLayers} );
+      const tomorrowKLayerGroup = L.layerGroup(tomorrowKCentroidLayers);
+      this.AQILayerStructure.push( {layerGroup: tomorrowKLayerGroup, layers: tomorrowKCentroidLayers} );
 
+      todayCentroidLayers.push(todayKLayerGroup);
+      tomorrowCentroidLayers.push(tomorrowKLayerGroup);
     }
 
-    const zoomStart = 8;
-    const zoomEnd = 13;
+    const zoomStart = END_GROUPING_ZOOM - 5;
 
     const todayCentroidGroup = L.layerGroup([todayCentroidLayers[0]]);
     const tomorrowCentroidGroup = L.layerGroup([tomorrowCentroidLayers[0]]);
@@ -824,13 +908,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
         tomorrowCentroidGroup.clearLayers();
         tomorrowCentroidGroup.addLayer(tomorrowCentroidLayers[0]);
       }
-      if (this.map.getZoom() >= zoomEnd) {
+      if (this.map.getZoom() >= END_GROUPING_ZOOM) {
         todayCentroidGroup.clearLayers();
         tomorrowCentroidGroup.clearLayers();
       }
     })
 
-    for (let i = zoomStart + 1; i < zoomEnd; i++) {
+    for (let i = zoomStart + 1; i < END_GROUPING_ZOOM; i++) {
       this.map.on('zoomend', () => {
         if (this.map.getZoom() == i) {
           todayCentroidGroup.clearLayers();
@@ -852,6 +936,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
 
     this.map.addLayer(centroidGroup);
+
+    this.layerControl.addOverlay(centroidGroup, 'Grouping Markers');
   }
 
   private getTodayAQIColor(coordinates: [number, number]) {
@@ -938,7 +1024,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
       const coordinates = changes['trailheadSelected'].currentValue;
-      this.map.setView([coordinates[1], coordinates[0]], 13);
+      this.map.setView([coordinates[1], coordinates[0]], END_GROUPING_ZOOM);
       this.selectedLocationMarker.setLatLng([coordinates[1], coordinates[0]]);
       this.selectedLocationMarker.addTo(this.map);
     }
