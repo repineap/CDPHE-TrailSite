@@ -94,6 +94,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.customMarkerPane = this.map.createPane('CustomMarkerPane');
     this.customMarkerPane.style.zIndex = '600';
 
+    const centroidPane = this.map.createPane('CentroidMarkerPane');
+    centroidPane.style.zIndex = '610';
+
     OpenStreetMap_Mapnik.addTo(this.map);
     this.layerControl = L.control.layers(undefined, undefined, { collapsed: false });
     this.layerControl.addTo(this.map);
@@ -417,11 +420,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
         })
       );
     });
-    const todayTrailheadLayerGroup = L.layerGroup(todayAQILayers);
+    const todayTrailheadLayerGroup = L.layerGroup(todayAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: todayTrailheadLayerGroup, layers: todayAQILayers });
-    const tomorrowTrailheadLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const tomorrowTrailheadLayerGroup = L.layerGroup(tomorrowAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: tomorrowTrailheadLayerGroup, layers: tomorrowAQILayers });
-    const trailheadLayer = L.layerGroup([todayTrailheadLayerGroup]);
+    const trailheadLayer = L.layerGroup([todayTrailheadLayerGroup], { pane: 'LocationPane' });
 
     let autoToggle = true;
 
@@ -555,11 +558,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
       );
     });
 
-    const todayFishingLayerGroup = L.layerGroup(todayAQILayers);
+    const todayFishingLayerGroup = L.layerGroup(todayAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: todayFishingLayerGroup, layers: todayAQILayers });
-    const tomorrowFishingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const tomorrowFishingLayerGroup = L.layerGroup(tomorrowAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: tomorrowFishingLayerGroup, layers: tomorrowAQILayers });
-    const fishingLayer = L.layerGroup([todayFishingLayerGroup]);
+    const fishingLayer = L.layerGroup([todayFishingLayerGroup], { pane: 'LocationPane' });
 
     this.layerControl.addOverlay(fishingLayer, "Fishing Facilities");
 
@@ -675,11 +678,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
       );
     });
 
-    const todayCampingLayerGroup = L.layerGroup(todayAQILayers);
+    const todayCampingLayerGroup = L.layerGroup(todayAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: todayCampingLayerGroup, layers: todayAQILayers });
-    const tomorrowCampingLayerGroup = L.layerGroup(tomorrowAQILayers);
+    const tomorrowCampingLayerGroup = L.layerGroup(tomorrowAQILayers, { pane: 'LocationPane' });
     this.AQILayerStructure.push({ layerGroup: tomorrowCampingLayerGroup, layers: tomorrowAQILayers });
-    const campingLayer = L.layerGroup([todayCampingLayerGroup]);
+    const campingLayer = L.layerGroup([todayCampingLayerGroup], { pane: 'LocationPane' });
 
     this.layerControl.addOverlay(campingLayer, "Camping Facilities");
 
@@ -843,7 +846,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
               centroidShape = 'Fishing';
             }
             const m = L.marker(latlng, {
-              pane: 'CustomMarkerPane',
+              pane: 'CentroidMarkerPane',
               icon: createCustomIcon(feature.properties.count, feature.properties.todayAQI.color, centroidShape)
             }).bindPopup(popupContent);
             return m;
@@ -875,7 +878,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
               centroidShape = 'Fishing';
             }
             const m = L.marker(latlng, {
-              pane: 'CustomMarkerPane',
+              pane: 'CentroidMarkerPane',
               icon: createCustomIcon(feature.properties.count, feature.properties.tomorrowAQI.color, centroidShape)
             }).bindPopup(popupContent);
             return m;
@@ -885,9 +888,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
         tomorrowKCentroidLayers.push(tomorrowCentroidLayer);
       });
 
-      const todayKLayerGroup = L.layerGroup(todayKCentroidLayers);
+      const todayKLayerGroup = L.layerGroup(todayKCentroidLayers, { pane: 'LocationPane' });
       this.AQILayerStructure.push( {layerGroup: todayKLayerGroup, layers: todayKCentroidLayers} );
-      const tomorrowKLayerGroup = L.layerGroup(tomorrowKCentroidLayers);
+      const tomorrowKLayerGroup = L.layerGroup(tomorrowKCentroidLayers, { pane: 'LocationPane' });
       this.AQILayerStructure.push( {layerGroup: tomorrowKLayerGroup, layers: tomorrowKCentroidLayers} );
 
       todayCentroidLayers.push(todayKLayerGroup);
@@ -896,10 +899,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     const zoomStart = END_GROUPING_ZOOM - 5;
 
-    const todayCentroidGroup = L.layerGroup([todayCentroidLayers[0]]);
-    const tomorrowCentroidGroup = L.layerGroup([tomorrowCentroidLayers[0]]);
+    const todayCentroidGroup = L.layerGroup([todayCentroidLayers[0]], { pane: 'LocationPane' });
+    const tomorrowCentroidGroup = L.layerGroup([tomorrowCentroidLayers[0]], { pane: 'LocationPane' });
 
-    const centroidGroup = L.layerGroup([todayCentroidGroup])
+    const centroidGroup = L.layerGroup([todayCentroidGroup], { pane: 'LocationPane' })
 
     this.map.on('zoomend', () => {
       if (this.map.getZoom() <= zoomStart) {
