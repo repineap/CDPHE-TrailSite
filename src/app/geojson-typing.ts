@@ -3,6 +3,11 @@ export interface Geometry {
   coordinates: [number, number];
 }
 
+export interface MultiGeometry {
+  type: string;
+  coordinates: number[][][]
+}
+
 export interface TrailheadProperties {
   feature_id: number;
   place_id: number;
@@ -86,4 +91,43 @@ export interface FacilityProperties {
   d_WINTER_S: string;
   d_SOURCE: string;
   d_SYM_CHAR: string;
+}
+
+export interface Trail {
+  type: string,
+  id: string,
+  geometry: MultiGeometry,
+  geometry_name: string,
+  properties: TrailProperties
+}
+
+export interface TrailProperties {
+  ogc_fid: number;
+  feature_id: string;
+  place_id: number;
+  name: string;
+  place_id_1: number;
+  name_1: string;
+  place_id_2: number;
+  name_2: string;
+  place_id_3: number;
+  name_3: string;
+  trail_num: string;
+  surface: string;
+  oneway: string;
+  type: string;
+  hiking: string;
+  horse: string;
+  bike: string;
+  motorcycle: string;
+  atv: string;
+  ohv_gt_50: string;
+  highway_ve: string;
+  dogs: string;
+  access: string;
+  min_elevat: number;
+  max_elevat: number;
+  length_mi_: number;
+  manager: string;
+  SHAPE_STLe: number;
 }

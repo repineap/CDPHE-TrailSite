@@ -9,7 +9,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { Facility, FacilityProperties, TrailheadProperties } from '../geojson-typing';
+import { Facility, FacilityProperties, Trail, TrailheadProperties, TrailProperties } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -98,7 +98,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
     centroidPane.style.zIndex = '610';
 
     OpenStreetMap_Mapnik.addTo(this.map);
-    this.layerControl = L.control.layers(undefined, undefined, { collapsed: false });
+    const layerOrder = ['Grouping Markers', 'Trailheads', 'Trails', 'Fishing Facilities', 'Camping Facilities']
+    this.layerControl = L.control.layers(undefined, undefined, {
+      collapsed: false,
+      sortLayers: true, 
+      sortFunction: (layerA, layerB, nameA, nameB) => {
+        return layerOrder.indexOf(nameA) - layerOrder.indexOf(nameB);
+      },
+    });
     this.layerControl.addTo(this.map);
 
     this.selectedLocationMarker = L.marker([39, -105.7821]);
@@ -108,34 +115,59 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
   }
 
+  private styleTrailData() {
+    //TODO: Get style data for trails
+    const features = this.trails.features as Trail[]
+    features.forEach((trail) => {
+      const geometry = turf.multiLineString(trail.geometry.coordinates);
+    });
+  }
+
   private initTrailsLayer(combineByPlaceID: boolean) {
     if (combineByPlaceID) {
       this.trails = this.groupTrails(this.trails);
     }
     const trailLayer = L.geoJSON(this.trails, {
       //Works fine for now
-      pane: 'AQIPane',
+      pane: 'CustomMarkerPane',
       style: (feature) => ({
-        weight: 4,
+        weight: 6,
         opacity: 0.75,
         color: 'black'
       }),
       filter: (feature) => {
-        //TODO: Filter based on more things?
-        return feature.properties && feature.properties.name !== '' && feature.properties.length_mi_ > 0;
+        return feature.properties && feature.properties.name !== '' && feature.properties.type !== 'Road';
       },
       onEachFeature: (feature, layer) => {
-        //TODO: Fix popup to accurately display what we want it to
-        const popupContent =
-          `<p>${feature.properties.name}</p>
-          <p>${feature.properties.length_mi_}</p>
-          <p>Energy Miles: ${this.getTrailEnergyMiles(feature.properties)}</p>
-          <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(feature.properties)}</p>`;
+        const popupContent = this.createTrailPopup(feature as Trail)
         layer.bindPopup(popupContent);
       }
     });
 
     this.layerControl.addOverlay(trailLayer, "Trails");
+  }
+
+  private createTrailPopup(trail: Trail): string {
+    const popupContent =
+    `<p>Name: ${trail.properties.name}</p>
+    <p>Type: ${trail.properties.type}</p>
+    <p>${trail.properties.length_mi_} miles long</p>
+    <p>Energy Miles: ${this.getTrailEnergyMiles(trail.properties)}</p>
+    <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(trail.properties)}</p>
+    <p>Surface: ${trail.properties.surface}</p>
+    <p>Max Elevation: ${this.metersToFt(trail.properties.max_elevat)}</p>
+    <p>Min Elevation: ${this.metersToFt(trail.properties.min_elevat)}</p>
+    <p>Oneway: ${trail.properties.oneway}</p>
+    <p>ATV: ${trail.properties.atv}</p>
+    <p>Motorcycle: ${trail.properties.motorcycle}</p>
+    <p>Horse: ${trail.properties.horse}</p>
+    <p>Hiking: ${trail.properties.hiking}</p>
+    <p>Biking: ${trail.properties.bike}</p>
+    <p>Dogs: ${trail.properties.dogs}</p>
+    <p>Highway Vehicle: ${trail.properties.highway_ve}</p>
+    <p>Off-Highway Vehicle greater than 50 inches wide: ${trail.properties.ohv_gt_50}</p>
+    <p>Access: ${trail.properties.access}</p>`;
+    return popupContent;
   }
 
   // private getTrailColor(length_mi_: any): string {
@@ -153,12 +185,16 @@ export class MapComponent implements AfterViewInit, OnChanges {
   /*
   Calculated based on https://www.pigeonforge.com/hike-difficulty/#:~:text=Petzoldt%20recommended%20adding%20two%20energy,formulas%20for%20calculating%20trail%20difficulty.
   */
-  private getTrailEnergyMiles(trail: any): number {
-    return trail.length_mi_ + ((trail.max_elevat - trail.min_elevat) * 3.280839895) / 500;
+  private getTrailEnergyMiles(trail: TrailProperties): number {
+    return trail.length_mi_ + (this.metersToFt(trail.max_elevat - trail.min_elevat)) / 500;
   }
 
-  private getTrailShenandoahDifficulty(trail: any): number {
-    return Math.sqrt(((trail.max_elevat - trail.min_elevat) * 3.280839895 * 2) * trail.length_mi_);
+  private getTrailShenandoahDifficulty(trail: TrailProperties): number {
+    return Math.sqrt((this.metersToFt(trail.max_elevat - trail.min_elevat)* 2) * trail.length_mi_);
+  }
+
+  private metersToFt(m: number): number {
+    return m * 3.280839895;
   }
 
   private groupTrails(geojson: any): any {
@@ -852,9 +888,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return m;
           }
         });
-  
+
         todayKCentroidLayers.push(todayCentroidLayer);
-  
+
         const tomorrowCentroidLayer = L.geoJSON(tomorrowCentroidGeoJSON as any, {
           filter: (feature) => {
             return feature.properties.tomorrowAQI.styleUrl === style
@@ -884,14 +920,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
             return m;
           }
         });
-  
+
         tomorrowKCentroidLayers.push(tomorrowCentroidLayer);
       });
 
       const todayKLayerGroup = L.layerGroup(todayKCentroidLayers, { pane: 'LocationPane' });
-      this.AQILayerStructure.push( {layerGroup: todayKLayerGroup, layers: todayKCentroidLayers} );
+      this.AQILayerStructure.push({ layerGroup: todayKLayerGroup, layers: todayKCentroidLayers });
       const tomorrowKLayerGroup = L.layerGroup(tomorrowKCentroidLayers, { pane: 'LocationPane' });
-      this.AQILayerStructure.push( {layerGroup: tomorrowKLayerGroup, layers: tomorrowKCentroidLayers} );
+      this.AQILayerStructure.push({ layerGroup: tomorrowKLayerGroup, layers: tomorrowKCentroidLayers });
 
       todayCentroidLayers.push(todayKLayerGroup);
       tomorrowCentroidLayers.push(tomorrowKLayerGroup);
@@ -997,10 +1033,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   ngAfterViewInit(): void {
     this.initMap();
-    // this._shapeService.getCotrexShapes().subscribe(trails => {
-    //   this.trails = trails;
-    //   this.initTrailsLayer(false);
-    // });
+    this._shapeService.getCotrexShapes().subscribe(trails => {
+      this.trails = trails;
+      this.initTrailsLayer(false);
+    });
     forkJoin({
       todayAqiData: this._shapeService.getTodayAQIShapes(),
       tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
