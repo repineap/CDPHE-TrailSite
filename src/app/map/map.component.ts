@@ -8,8 +8,8 @@ import 'skmeans';
 import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
-import { forkJoin } from 'rxjs';
-import { Facility, FacilityProperties, Trail, TrailheadProperties, TrailProperties } from '../geojson-typing';
+import { forkJoin, switchMap, tap } from 'rxjs';
+import { Facility, FacilityProperties, MultiGeometry, Trail, TrailheadProperties, TrailProperties } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -101,14 +101,22 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const layerOrder = ['Grouping Markers', 'Trailheads', 'Trails', 'Fishing Facilities', 'Camping Facilities']
     this.layerControl = L.control.layers(undefined, undefined, {
       collapsed: false,
-      sortLayers: true, 
+      sortLayers: true,
       sortFunction: (layerA, layerB, nameA, nameB) => {
         return layerOrder.indexOf(nameA) - layerOrder.indexOf(nameB);
       },
     });
     this.layerControl.addTo(this.map);
 
-    this.selectedLocationMarker = L.marker([39, -105.7821]);
+    this.selectedLocationMarker = CL.marker6Points([39, -105.7821], {
+      radius: 15,
+      pane: 'TrailPane',
+      color: 'blue',
+      weight: 4,
+      opacity: 1,
+      fillColor: 'gray',
+      fillOpacity: 0.5
+    });
 
     this.map.on('moveend', () => {
       this.mapBoundsChange.emit(this.map.getBounds());
@@ -116,10 +124,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private styleTrailData() {
-    //TODO: Get style data for trails
     const features = this.trails.features as Trail[]
-    features.forEach((trail) => {
-      const geometry = turf.multiLineString(trail.geometry.coordinates);
+    // features.forEach((trail: any) => {
+    //   trail.properties['todayAQI'] = this.getTrailTodayAQIColor(trail.geometry);
+    //   trail.properties['tomorrowAQI'] = this.getTrailTomorrowAQIColor(trail.geometry);
+    // });
+    features.forEach((trail: any) => {
+      trail.properties['todayAQI'] = this.getTodayAQIColor(trail.geometry.coordinates[0][0]);
+      trail.properties['tomorrowAQI'] = this.getTomorrowAQIColor(trail.geometry.coordinates[0][0]);
     });
   }
 
@@ -127,47 +139,182 @@ export class MapComponent implements AfterViewInit, OnChanges {
     if (combineByPlaceID) {
       this.trails = this.groupTrails(this.trails);
     }
-    const trailLayer = L.geoJSON(this.trails, {
-      //Works fine for now
-      pane: 'CustomMarkerPane',
-      style: (feature) => ({
-        weight: 6,
-        opacity: 0.75,
-        color: 'black'
-      }),
-      filter: (feature) => {
-        return feature.properties && feature.properties.name !== '' && feature.properties.type !== 'Road';
-      },
-      onEachFeature: (feature, layer) => {
-        const popupContent = this.createTrailPopup(feature as Trail)
-        layer.bindPopup(popupContent);
+
+    // this.initTrailTrailheadLayer();
+
+    this.styleTrailData();
+
+    const todayTrailLayers: L.Layer[] = [];
+    const tomorrowTrailLayers: L.Layer[] = [];
+
+    aqiStyleUrls.forEach((style) => {
+      todayTrailLayers.push(
+        L.geoJSON(this.trails, {
+          filter: (feature) => {
+            return feature.properties.todayAQI.styleUrl === style && feature.properties && feature.properties.name !== '' && feature.properties.type !== 'Road';
+          },
+          pane: 'CustomMarkerPane',
+          style: (feature) => ({
+            weight: 6,
+            opacity: 0.75,
+            color: 'black'
+          }),
+          onEachFeature: (feature, layer) => {
+            const popupContent = this.createTrailPopup(feature as Trail)
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+
+      tomorrowTrailLayers.push(
+        L.geoJSON(this.trails, {
+          filter: (feature) => {
+            return feature.properties.tomorrowAQI.styleUrl === style && feature.properties && feature.properties.name !== '' && feature.properties.type !== 'Road';
+          },
+          pane: 'CustomMarkerPane',
+          style: (feature) => ({
+            weight: 6,
+            opacity: 0.75,
+            color: 'black'
+          }),
+          onEachFeature: (feature, layer) => {
+            const popupContent = this.createTrailPopup(feature as Trail)
+            layer.bindPopup(popupContent);
+          }
+        })
+      );
+    });
+
+    const todayTrailGroup = L.layerGroup(todayTrailLayers, { pane: 'LocationPane' });
+    this.AQILayerStructure.push({ layerGroup: todayTrailGroup, layers: todayTrailLayers });
+    const tomorrowTrailGroup = L.layerGroup(tomorrowTrailLayers, { pane: 'LocationPane' });
+    this.AQILayerStructure.push({ layerGroup: tomorrowTrailGroup, layers: tomorrowTrailLayers });
+
+    const trailLayer = L.layerGroup([todayTrailGroup], { pane: 'LocationPane' });
+
+    let autoToggle = true;
+
+    this.map.on('zoomend', () => {
+      if (!autoToggle) {
+        return;
+      }
+      const mapZoom = this.map.getZoom();
+      if (mapZoom < END_GROUPING_ZOOM) {
+        trailLayer.removeFrom(this.map);
+      } else {
+        trailLayer.addTo(this.map);
+      }
+    });
+
+    trailLayer.on('add', () => {
+      if (this.map.getZoom() < END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
+      }
+    });
+
+    trailLayer.on('remove', () => {
+      if (this.map.getZoom() >= END_GROUPING_ZOOM) {
+        autoToggle = false;
+      } else {
+        autoToggle = true;
+      }
+    });
+
+    this.map.on('baselayerchange', () => {
+      if (trailLayer.hasLayer(todayTrailGroup)) {
+        trailLayer.clearLayers();
+        trailLayer.addLayer(tomorrowTrailGroup);
+      } else {
+        trailLayer.clearLayers();
+        trailLayer.addLayer(todayTrailGroup);
       }
     });
 
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
 
+  private initTrailTrailheadLayer() {
+    this.trails.features.forEach((trail: Trail) => {
+      const coordinates: [number, number] = [trail.geometry.coordinates[0][0][1], trail.geometry.coordinates[0][0][0]]
+      CL.marker6Points(coordinates, {
+        pane: 'CustomMarkerPane',
+        radius: 5,
+        fillColor: 'black',
+        fillOpacity: 0.5,
+        color: 'orange',
+        weight: 2,
+        opacity: 1
+      }).addTo(this.map);
+    });
+  }
+
   private createTrailPopup(trail: Trail): string {
     const popupContent =
-    `<p>Name: ${trail.properties.name}</p>
-    <p>Type: ${trail.properties.type}</p>
+      `<p>Name: ${this.checkForEmpty(trail.properties.name)}</p>
+    <p>Type: ${this.checkForEmpty(trail.properties.type)}</p>
     <p>${trail.properties.length_mi_} miles long</p>
     <p>Energy Miles: ${this.getTrailEnergyMiles(trail.properties)}</p>
     <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(trail.properties)}</p>
-    <p>Surface: ${trail.properties.surface}</p>
+    <p>Surface: ${this.checkForEmpty(trail.properties.surface)}</p>
     <p>Max Elevation: ${this.metersToFt(trail.properties.max_elevat)}</p>
     <p>Min Elevation: ${this.metersToFt(trail.properties.min_elevat)}</p>
-    <p>Oneway: ${trail.properties.oneway}</p>
-    <p>ATV: ${trail.properties.atv}</p>
-    <p>Motorcycle: ${trail.properties.motorcycle}</p>
-    <p>Horse: ${trail.properties.horse}</p>
-    <p>Hiking: ${trail.properties.hiking}</p>
-    <p>Biking: ${trail.properties.bike}</p>
-    <p>Dogs: ${trail.properties.dogs}</p>
-    <p>Highway Vehicle: ${trail.properties.highway_ve}</p>
-    <p>Off-Highway Vehicle greater than 50 inches wide: ${trail.properties.ohv_gt_50}</p>
-    <p>Access: ${trail.properties.access}</p>`;
+    <p>Oneway: ${this.checkForEmpty(trail.properties.oneway)}</p>
+    <p>ATV: ${this.checkForEmpty(trail.properties.atv)}</p>
+    <p>Motorcycle: ${this.checkForEmpty(trail.properties.motorcycle)}</p>
+    <p>Horse: ${this.checkForEmpty(trail.properties.horse)}</p>
+    <p>Hiking: ${this.checkForEmpty(trail.properties.hiking)}</p>
+    <p>Biking: ${this.checkForEmpty(trail.properties.bike)}</p>
+    <p>Dogs: ${this.checkForEmpty(trail.properties.dogs)}</p>
+    <p>Highway Vehicle: ${this.checkForEmpty(trail.properties.highway_ve)}</p>
+    <p>Off-Highway Vehicle greater than 50 inches wide: ${this.checkForEmpty(trail.properties.ohv_gt_50)}</p>
+    <p>Access: ${this.checkForEmpty(trail.properties.access)}</p>`;
     return popupContent;
+  }
+
+  private checkForEmpty(value: string): string {
+    return value === '' ? 'N/A' : value;
+  }
+
+  private getTrailTodayAQIColor(geometry: MultiGeometry) {
+    const coordinates = geometry.coordinates;
+    const styles = [];
+    const seen: { [key: string]: boolean } = {};
+    aqiStyleUrls.forEach((style) => {
+      seen[style] = false;
+    });
+    for (let feature of this.todayColoradoAqiData.features) {
+      if (seen[feature.properties.styleUrl]) {
+        return;
+      }
+      const originalPolygon = feature.geometry;
+      if (turf.booleanIntersects(originalPolygon, turf.multiLineString(coordinates))) {
+        styles.push(feature.properties.styleUrl);
+        seen[feature.properties.styleUrl] = true;
+      }
+    }
+    return styles;
+  }
+
+  private getTrailTomorrowAQIColor(geometry: MultiGeometry) {
+    const coordinates = geometry.coordinates;
+    const styles = [];
+    const seen: { [key: string]: boolean } = {};
+    aqiStyleUrls.forEach((style) => {
+      seen[style] = false;
+    });
+    for (let feature of this.tomorrowColoradoAqiData.features) {
+      if (seen[feature.properties.styleUrl]) {
+        return;
+      }
+      const originalPolygon = feature.geometry;
+      if (turf.booleanIntersects(originalPolygon, turf.multiLineString(coordinates))) {
+        styles.push(feature.properties.styleUrl);
+        seen[feature.properties.styleUrl] = true;
+      }
+    }
+    return styles;
   }
 
   // private getTrailColor(length_mi_: any): string {
@@ -190,7 +337,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private getTrailShenandoahDifficulty(trail: TrailProperties): number {
-    return Math.sqrt((this.metersToFt(trail.max_elevat - trail.min_elevat)* 2) * trail.length_mi_);
+    return Math.sqrt((this.metersToFt(trail.max_elevat - trail.min_elevat) * 2) * trail.length_mi_);
   }
 
   private metersToFt(m: number): number {
@@ -386,7 +533,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private initTrailheadLayer() {
 
     this.styleTrailheadData()
-    const markers: L.Marker[] = [];
 
     const todayAQILayers: L.Layer[] = [];
     const tomorrowAQILayers: L.Layer[] = [];
@@ -500,10 +646,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
         trailheadLayer.clearLayers();
         trailheadLayer.addLayer(todayTrailheadLayerGroup);
       }
-    });
-
-    markers.forEach((marker) => {
-      marker.options.icon = createCustomIcon(-1, this.getClusterColor(marker.getLatLng()), 'Trailhead');
     });
 
     this.layerControl.addOverlay(trailheadLayer, 'Trailheads');
@@ -1033,24 +1175,23 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   ngAfterViewInit(): void {
     this.initMap();
-    this._shapeService.getCotrexShapes().subscribe(trails => {
-      this.trails = trails;
-      this.initTrailsLayer(false);
-    });
     forkJoin({
       todayAqiData: this._shapeService.getTodayAQIShapes(),
       tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
       trailheadData: this._shapeService.getTrailheadShapes(),
-      facilityData: this._shapeService.getFacilityShapes()
+      facilityData: this._shapeService.getFacilityShapes(),
+      trails: this._shapeService.getCotrexShapes()
     }).subscribe({
-      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData }) => {
+      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData, trails }) => {
         this.todayAqiData = todayAqiData;
         this.tomorrowAqiData = tomorrowAqiData;
         this.trailheadData = trailheadData;
         this.facilityData = facilityData;
+        this.trails = trails;
 
         this.initTodayAQILayer();
         this.initTomorrowAQILayer();
+        this.initTrailsLayer(false);
         this.initTrailheadLayer();
         this.initFacilityLayer();
         this.initCentroidLayer();
