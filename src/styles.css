@@ -4,43 +4,130 @@
 @tailwind utilities;
 
 .circle-marker {
-    position: absolute;
-    border: 2px solid black;
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 1;
+  position: absolute;
+  border: 2px solid black;
+  width: 100%;
+  height: 100%;
+  /* border-radius: 50%; */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
 }
-  
+
 .custom-icon {
-    position: absolute;
-    width: 50%;
-    height: 50%;
-    left: 50%;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 2;
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
 }
 
 .custom-div-icon {
-    background-color: transparent;
-    border: none;
-  }
-  
-  .trailhead-centroid {
-    text-align: center;
-    line-height: 30px;
-    /* border-radius: 50%; */
-    width: 30px;
-    height: 30px;
-    display: inline-block;
-    border: 2px solid black;
-  }
+  background-color: transparent;
+  border: none;
+}
 
-  .centroid-text {
-    color: black;
-    font-weight: bolder;
+.trailhead-centroid {
+  text-align: center;
+  line-height: 30px;
+  display: inline-block;
+  border: 2px solid black;
+}
+
+.centroid-text {
+  color: black;
+  font-weight: bolder;
+}
+
+.location-selector {
+  font: 14px Arial, Helvetica, sans-serif;
+  /* background: white; */
+  background: rgba(255, 255, 255);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  line-height: 24px;
+  border: 2px solid rgba(95, 95, 95, 0.541);
+  padding: 2px;
+}
+
+/* Legend Styling */
+.legend {
+  padding: 6px 8px;
+  font: 14px Arial, Helvetica, sans-serif;
+  /* background: white; */
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  line-height: 24px;
+}
+
+.legend h4 {
+  text-align: center;
+  font-size: 16px;
+  font-weight: bold;
+  margin: 2px 12px 8px;
+  color: #777;
+}
+
+.legend-checkbox label {
+  position: relative;
+  bottom: 3px;
+  opacity: 1;
+  color: rgb(50, 50, 50);
+}
+
+.legend-checkbox .legend-icon {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.8;
+}
+
+.legend i.icon {
+  background-size: 18px;
+  background-color: rgba(255, 255, 255, 1);
+}
+
+.legend i {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.8;
+}
+
+.legend .legend-icon {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.8;
+}
+
+/* Popup Styling */
+.popup {
+  height: 100%;
+  width: 100%;
+}
+
+.popup img {
+  margin: auto;
+  height: 3rem;
+  width: 3rem;
+}
+
+.popup p {
+  margin-top: 2px;
+  font: 1em arial;
+}
+
+/* Mobile screen */
+@media (max-width: 1024px) {
+  .legend {
+    display: none;
   }
+}

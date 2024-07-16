@@ -23,11 +23,5 @@
     </div>
 </form>
 <app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)"></app-sideBar>
-<ng-template #itemTemplate let-item>
-    <a [innerHTML]="item.location"></a>
-</ng-template>
-
-<ng-template #notFoundTemplate let-notFound>
-    <div [innerHTML]="'Not Found'" style="color: black;"></div>
-</ng-template>
+<app-descriptor-card [details]="selectedTrailhead" class="absolute top-[75%] left-[26%] w-[65%] p-4"></app-descriptor-card>
 <app-map (mapBoundsChange)="notifySidebar($event)" [trailheadSelected]="selectedTrailheadCoordinates"></app-map>

@@ -12,3 +12,15 @@
     margin-top: 10px;
     margin-left: 10px;
 }
+
+.nav {
+    height: 50px;
+}
+
+app-map {
+    position: absolute;
+    top: 70px;
+    left: 26%;
+    bottom: 25%;
+    right: 0;
+}
