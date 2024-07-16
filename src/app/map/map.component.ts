@@ -8,7 +8,7 @@ import 'skmeans';
 import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
-import { forkJoin, switchMap, tap } from 'rxjs';
+import { forkJoin } from 'rxjs';
 import { Facility, FacilityProperties, MultiGeometry, Trail, TrailheadProperties, TrailProperties } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
@@ -97,6 +97,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const centroidPane = this.map.createPane('CentroidMarkerPane');
     centroidPane.style.zIndex = '610';
 
+    const userLocationPane = this.map.createPane('UserLocation');
+    userLocationPane.style.zIndex = '620';
+
     OpenStreetMap_Mapnik.addTo(this.map);
     const layerOrder = ['Grouping Markers', 'Trailheads', 'Trails', 'Fishing Facilities', 'Camping Facilities']
     this.layerControl = L.control.layers(undefined, undefined, {
@@ -115,12 +118,54 @@ export class MapComponent implements AfterViewInit, OnChanges {
       weight: 4,
       opacity: 1,
       fillColor: 'gray',
-      fillOpacity: 0.5
+      fillOpacity: 0.5,
     });
 
     this.map.on('moveend', () => {
       this.mapBoundsChange.emit(this.map.getBounds());
     });
+  }
+
+  private initLocationSelector() {
+    var legend = L.control.layers(undefined, undefined, { position: "topleft" });
+
+    legend.onAdd = (map) => {
+      var div = L.DomUtil.create("div", "location-selector");
+      div.innerHTML += `
+      <svg class="h-[26px] w-[26px] text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="3 11 22 2 13 21 11 13 3 11" />
+      </svg>`
+
+      div.addEventListener('click', () => {
+        this.initLocationMarker();
+      });
+
+      return div;
+    };
+
+    this.map.addControl(legend);
+  }
+
+  private initLocationMarker() {
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((position) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+
+        const testMarker = L.marker([latitude, longitude], {
+        });
+
+        testMarker.addTo(this.map);
+
+        this.map.panTo([latitude, longitude]);
+      }, (error) => {
+        console.error('Geolocation error:', error);
+      });
+    } else {
+      console.error('Geolocation not supported by this browser.');
+    }
   }
 
   private styleTrailData() {
@@ -1197,6 +1242,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         this.initCentroidLayer();
         this.initAQILegend();
         this.initShapeLegend();
+        this.initLocationSelector();
       }
     });
   }

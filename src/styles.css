@@ -42,6 +42,17 @@
   font-weight: bolder;
 }
 
+.location-selector {
+  font: 14px Arial, Helvetica, sans-serif;
+  /* background: white; */
+  background: rgba(255, 255, 255);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  border-radius: 5px;
+  line-height: 24px;
+  border: 2px solid rgba(95, 95, 95, 0.541);
+  padding: 2px;
+}
+
 /* Legend Styling */
 .legend {
   padding: 6px 8px;
