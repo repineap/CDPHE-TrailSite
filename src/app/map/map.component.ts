@@ -60,6 +60,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
   private selectedLocationMarker!: L.Marker;
+  private userLocationMarker!: L.Marker;
 
   private AQILayerStructure: AQIStructure[] = [];
 
@@ -121,6 +122,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
       fillOpacity: 0.5,
     });
 
+    this.userLocationMarker = L.marker([39, -105.7821]);
+
     this.map.on('moveend', () => {
       this.mapBoundsChange.emit(this.map.getBounds());
     });
@@ -132,13 +135,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
     legend.onAdd = (map) => {
       var div = L.DomUtil.create("div", "location-selector");
       div.innerHTML += `
-      <svg class="h-[26px] w-[26px] text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+      <svg class="h-[20px] w-[20px] text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
       stroke-linecap="round" stroke-linejoin="round">
         <polygon points="3 11 22 2 13 21 11 13 3 11" />
       </svg>`
 
       div.addEventListener('click', () => {
-        this.initLocationMarker();
+        this.setLocationMarker();
       });
 
       return div;
@@ -147,19 +150,17 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.map.addControl(legend);
   }
 
-  private initLocationMarker() {
-
+  private setLocationMarker() {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition((position) => {
         const latitude = position.coords.latitude;
         const longitude = position.coords.longitude;
 
-        const testMarker = L.marker([latitude, longitude], {
-        });
+        this.userLocationMarker.setLatLng([latitude, longitude]);
 
-        testMarker.addTo(this.map);
+        this.userLocationMarker.addTo(this.map);
 
-        this.map.panTo([latitude, longitude]);
+        this.map.flyTo([latitude, longitude]);
       }, (error) => {
         console.error('Geolocation error:', error);
       });
@@ -280,113 +281,27 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.layerControl.addOverlay(trailLayer, "Trails");
   }
 
-  private initTrailTrailheadLayer() {
-    this.trails.features.forEach((trail: Trail) => {
-      const coordinates: [number, number] = [trail.geometry.coordinates[0][0][1], trail.geometry.coordinates[0][0][0]]
-      CL.marker6Points(coordinates, {
-        pane: 'CustomMarkerPane',
-        radius: 5,
-        fillColor: 'black',
-        fillOpacity: 0.5,
-        color: 'orange',
-        weight: 2,
-        opacity: 1
-      }).addTo(this.map);
-    });
-  }
-
   private createTrailPopup(trail: Trail): string {
     const popupContent =
-      `<p>Name: ${this.checkForEmpty(trail.properties.name)}</p>
-    <p>Type: ${this.checkForEmpty(trail.properties.type)}</p>
+      `<p>Name: ${checkForEmpty(trail.properties.name)}</p>
+    <p>Type: ${checkForEmpty(trail.properties.type)}</p>
     <p>${trail.properties.length_mi_} miles long</p>
-    <p>Energy Miles: ${this.getTrailEnergyMiles(trail.properties)}</p>
-    <p>Shenandoah Difficulty: ${this.getTrailShenandoahDifficulty(trail.properties)}</p>
-    <p>Surface: ${this.checkForEmpty(trail.properties.surface)}</p>
-    <p>Max Elevation: ${this.metersToFt(trail.properties.max_elevat)}</p>
-    <p>Min Elevation: ${this.metersToFt(trail.properties.min_elevat)}</p>
-    <p>Oneway: ${this.checkForEmpty(trail.properties.oneway)}</p>
-    <p>ATV: ${this.checkForEmpty(trail.properties.atv)}</p>
-    <p>Motorcycle: ${this.checkForEmpty(trail.properties.motorcycle)}</p>
-    <p>Horse: ${this.checkForEmpty(trail.properties.horse)}</p>
-    <p>Hiking: ${this.checkForEmpty(trail.properties.hiking)}</p>
-    <p>Biking: ${this.checkForEmpty(trail.properties.bike)}</p>
-    <p>Dogs: ${this.checkForEmpty(trail.properties.dogs)}</p>
-    <p>Highway Vehicle: ${this.checkForEmpty(trail.properties.highway_ve)}</p>
-    <p>Off-Highway Vehicle greater than 50 inches wide: ${this.checkForEmpty(trail.properties.ohv_gt_50)}</p>
-    <p>Access: ${this.checkForEmpty(trail.properties.access)}</p>`;
+    <p>Energy Miles: ${getTrailEnergyMiles(trail.properties)}</p>
+    <p>Shenandoah Difficulty: ${getTrailShenandoahDifficulty(trail.properties)}</p>
+    <p>Surface: ${checkForEmpty(trail.properties.surface)}</p>
+    <p>Max Elevation: ${metersToFt(trail.properties.max_elevat)}</p>
+    <p>Min Elevation: ${metersToFt(trail.properties.min_elevat)}</p>
+    <p>Oneway: ${checkForEmpty(trail.properties.oneway)}</p>
+    <p>ATV: ${checkForEmpty(trail.properties.atv)}</p>
+    <p>Motorcycle: ${checkForEmpty(trail.properties.motorcycle)}</p>
+    <p>Horse: ${checkForEmpty(trail.properties.horse)}</p>
+    <p>Hiking: ${checkForEmpty(trail.properties.hiking)}</p>
+    <p>Biking: ${checkForEmpty(trail.properties.bike)}</p>
+    <p>Dogs: ${checkForEmpty(trail.properties.dogs)}</p>
+    <p>Highway Vehicle: ${checkForEmpty(trail.properties.highway_ve)}</p>
+    <p>Off-Highway Vehicle greater than 50 inches wide: ${checkForEmpty(trail.properties.ohv_gt_50)}</p>
+    <p>Access: ${checkForEmpty(trail.properties.access)}</p>`;
     return popupContent;
-  }
-
-  private checkForEmpty(value: string): string {
-    return value === '' ? 'N/A' : value;
-  }
-
-  private getTrailTodayAQIColor(geometry: MultiGeometry) {
-    const coordinates = geometry.coordinates;
-    const styles = [];
-    const seen: { [key: string]: boolean } = {};
-    aqiStyleUrls.forEach((style) => {
-      seen[style] = false;
-    });
-    for (let feature of this.todayColoradoAqiData.features) {
-      if (seen[feature.properties.styleUrl]) {
-        return;
-      }
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.multiLineString(coordinates))) {
-        styles.push(feature.properties.styleUrl);
-        seen[feature.properties.styleUrl] = true;
-      }
-    }
-    return styles;
-  }
-
-  private getTrailTomorrowAQIColor(geometry: MultiGeometry) {
-    const coordinates = geometry.coordinates;
-    const styles = [];
-    const seen: { [key: string]: boolean } = {};
-    aqiStyleUrls.forEach((style) => {
-      seen[style] = false;
-    });
-    for (let feature of this.tomorrowColoradoAqiData.features) {
-      if (seen[feature.properties.styleUrl]) {
-        return;
-      }
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.multiLineString(coordinates))) {
-        styles.push(feature.properties.styleUrl);
-        seen[feature.properties.styleUrl] = true;
-      }
-    }
-    return styles;
-  }
-
-  // private getTrailColor(length_mi_: any): string {
-  //   if (length_mi_ < 1) {
-  //     return '#1eff00';
-  //   } else if (length_mi_ < 3) {
-  //     return '#e5ff00';
-  //   } else if (length_mi_ < 5) {
-  //     return '#ffb300';
-  //   } else {
-  //     return '#ff2f00';
-  //   }
-  // }
-
-  /*
-  Calculated based on https://www.pigeonforge.com/hike-difficulty/#:~:text=Petzoldt%20recommended%20adding%20two%20energy,formulas%20for%20calculating%20trail%20difficulty.
-  */
-  private getTrailEnergyMiles(trail: TrailProperties): number {
-    return trail.length_mi_ + (this.metersToFt(trail.max_elevat - trail.min_elevat)) / 500;
-  }
-
-  private getTrailShenandoahDifficulty(trail: TrailProperties): number {
-    return Math.sqrt((this.metersToFt(trail.max_elevat - trail.min_elevat) * 2) * trail.length_mi_);
-  }
-
-  private metersToFt(m: number): number {
-    return m * 3.280839895;
   }
 
   private groupTrails(geojson: any): any {
@@ -1218,6 +1133,12 @@ export class MapComponent implements AfterViewInit, OnChanges {
     return 'black';
   }
 
+  private recommendTrails(selectedTrail: Trail) {
+    //TODO: Trail recommendation tech
+    const geometry = turf.multiLineString(selectedTrail.geometry.coordinates);
+    const shenandoahDifficulty = getTrailShenandoahDifficulty(selectedTrail.properties);
+  }
+
   ngAfterViewInit(): void {
     this.initMap();
     forkJoin({
@@ -1248,6 +1169,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   ngOnChanges(changes: SimpleChanges): void {
+    //Fires when a trailhead (or anything from the sidebar) is selected
     if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
       const coordinates = changes['trailheadSelected'].currentValue;
       this.map.setView([coordinates[1], coordinates[0]], END_GROUPING_ZOOM);
@@ -1293,4 +1215,23 @@ function createCustomIcon(count: number, color: string, shape: string) {
       iconAnchor: [iconAnchor, iconAnchor]
     });
   }
+}
+
+/*
+  Calculated based on https://www.pigeonforge.com/hike-difficulty/#:~:text=Petzoldt%20recommended%20adding%20two%20energy,formulas%20for%20calculating%20trail%20difficulty.
+*/
+function getTrailEnergyMiles(trail: TrailProperties): number {
+  return trail.length_mi_ + (metersToFt(trail.max_elevat - trail.min_elevat)) / 500;
+}
+
+function getTrailShenandoahDifficulty(trail: TrailProperties): number {
+  return Math.sqrt((metersToFt(trail.max_elevat - trail.min_elevat) * 2) * trail.length_mi_);
+}
+
+function metersToFt(m: number): number {
+  return m * 3.280839895;
+}
+
+function checkForEmpty(value: string): string {
+  return value === '' ? 'N/A' : value;
 }
