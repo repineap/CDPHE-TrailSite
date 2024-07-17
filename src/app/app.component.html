@@ -23,5 +23,5 @@
     </div>
 </form>
 <app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)"></app-sideBar>
-<app-descriptor-card [details]="selectedTrailhead" class="absolute top-[75%] left-[26%] w-[65%] p-4"></app-descriptor-card>
+<app-descriptor-card [details]="selectedTrailhead" class="absolute top-[90%] left-[28%] w-[75%] p-4"></app-descriptor-card>
 <app-map (mapBoundsChange)="notifySidebar($event)" [trailheadSelected]="selectedTrailheadCoordinates"></app-map>

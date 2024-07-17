@@ -1,11 +1,53 @@
 <div *ngIf="details" class="shadow-2xl">
     <div class="border border-black rounded-md">
-        <h1 class="font-bold text-lg ml-2 mb-4 underline underline-offset-8 ">{{details.properties.name}}</h1>
-        <div class="bg-slate-70 p-4 rounded-md">
-            <p> Bathrooms Available: {{details.properties.bathrooms}}</p>
-            <p>Fee: {{details.properties.fee}}</p>
-            <p>Water Available: {{details.properties.water}}</p>
-            <p>Manger: {{details.properties.manager}}</p>
+        <h1 class="font-bold text-lg ml-2 underline underline-offset-8 ">{{details.properties.name}}</h1>
+        <div class="bg-slate-70 p-4 rounded-md flex space-y-0">
+
+            <div class="flex flex-row items-center mr-4">
+                <span class="fa-stack fa-xl ">
+                    <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
+                    <i class=" fa fa-solid fa-restroom  fa-stack-1x"></i>    
+                  </span>
+                  <div class="flex flex-col m-2" >
+                      <p class="text-lg  underline"> Bathroom</p>
+                      <p class="capitalize font-bold">{{details.properties.bathrooms}}</p>
+
+                  </div>
+            </div>
+
+            <div class="flex flex-row items-center mr-4">
+                <span class="fa-stack fa-xl  ">
+                    <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
+                    <i class=" fa fa-solid fa-dollar-sign fa-stack-1x"></i>    
+                  </span>
+                  <div class="flex flex-col m-2" >
+                      <p class="text-lg  underline">Fee</p>
+                      <p class=" capitalize font-bold">  {{details.properties.fee}}</p>
+                  </div>
+            </div>
+
+            <div class="flex flex-row items-center mr-4">
+                <span class="fa-stack fa-xl ">
+                    <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
+                    <i class=" fa fa-solid fa-bottle-water fa-stack-1x"></i>    
+                  </span>
+                  <div class="flex flex-col m-2" >
+                      <p  class="text-lg underline text-gray-900">Water</p>
+                      <p class=" capitalize font-bold"> {{details.properties.water}}</p>
+                  </div>
+            </div>
+
+              <div class="flex flex-row items-center mr-4">
+                <span class="fa-stack fa-xl ">
+                    <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
+                    <i class=" fa fa-solid fa-user fa-stack-1x"></i>
+                  </span>
+                  <div class="flex flex-col m-2 " >
+                      <p  class="text-lg  underline">Manger</p>
+                      <p class="m-auto capitalize font-bold">{{details.properties.manager}}</p>
+                  </div>
+            </div>
+
             <!-- <p>Coordinates: [{{details.geometry.coordinates}}]</p> -->
         </div>
     </div>
