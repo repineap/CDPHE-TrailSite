@@ -157,4 +157,5 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   update(trailHead: Trailhead) {
     this.trailheadSelected.emit(trailHead);
   }
+
 }
