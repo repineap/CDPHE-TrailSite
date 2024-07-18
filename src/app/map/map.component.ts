@@ -140,8 +140,15 @@ export class MapComponent implements AfterViewInit, OnChanges {
         <polygon points="3 11 22 2 13 21 11 13 3 11" />
       </svg>`
 
+      // div.addEventListener('click', () => {
+      //   this.setLocationMarker();
+      // });
+
       div.addEventListener('click', () => {
-        this.setLocationMarker();
+        const randomTrail: Trail = this.trails.features[Math.floor(Math.random() * this.trails.features.length)];
+        this.map.setView([randomTrail.geometry.coordinates[0][0][1], randomTrail.geometry.coordinates[0][0][0]], 13);
+        L.circleMarker([randomTrail.geometry.coordinates[0][0][1], randomTrail.geometry.coordinates[0][0][0]]).addTo(this.map);
+        this.recommendTrails(randomTrail, true, 25);
       });
 
       return div;
@@ -178,6 +185,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
     features.forEach((trail: any) => {
       trail.properties['todayAQI'] = this.getTodayAQIColor(trail.geometry.coordinates[0][0]);
       trail.properties['tomorrowAQI'] = this.getTomorrowAQIColor(trail.geometry.coordinates[0][0]);
+    });
+    this.trails.features = features.filter((trail: Trail) => {
+      return trail.properties && trail.properties.name !== '' && trail.properties.type !== 'Road' && trail.properties.length_mi_ != 0;
     });
   }
 
@@ -1133,10 +1143,65 @@ export class MapComponent implements AfterViewInit, OnChanges {
     return 'black';
   }
 
-  private recommendTrails(selectedTrail: Trail) {
+  private recommendTrails(selectedTrail: Trail, todayRecommendations: boolean, trailsToRecommend: number) {
     //TODO: Trail recommendation tech
-    const geometry = turf.multiLineString(selectedTrail.geometry.coordinates);
+    const startPoint = turf.point(selectedTrail.geometry.coordinates[0][0]);
     const shenandoahDifficulty = getTrailShenandoahDifficulty(selectedTrail.properties);
+    const energyMiles = getTrailEnergyMiles(selectedTrail.properties);
+    
+    const closestTrails = ([...this.trails.features] as Trail[]);
+    closestTrails.sort((a, b) => {
+      return turf.distance(startPoint, turf.point(a.geometry.coordinates[0][0])) - turf.distance(startPoint, turf.point(b.geometry.coordinates[0][0]));
+    });
+
+    const aqiIndex = todayRecommendations ? 'todayAQI' : 'tomorrowAQI';
+    const trailAQI = closestTrails[0].properties[aqiIndex];
+
+    if (!trailAQI) {
+      return;
+    }
+
+    const aqiLevels: { [key: string]: number} = {};
+
+    aqiStyleUrls.forEach((style, i) => {
+      aqiLevels[style] = i;
+    });
+
+    const maxIndex = Math.max(0, aqiLevels[trailAQI.styleUrl] - 1);
+    const trailsRecommended: Trail[] = [];
+
+    const percentDifferenceMargin = 0.25;
+
+    for (let i = 1; i < closestTrails.length && trailsRecommended.length < trailsToRecommend; i++) {
+      const currentTrail = closestTrails[i];
+      const currentAQI = currentTrail.properties[aqiIndex]?.styleUrl
+      if (!currentAQI || aqiLevels[currentAQI] > maxIndex) {
+        continue;
+      }
+      const currentShenandoahDifficulty = getTrailShenandoahDifficulty(currentTrail.properties);
+      const currentEnergyMiles = getTrailEnergyMiles(currentTrail.properties);
+      if (getError(shenandoahDifficulty, currentShenandoahDifficulty) > percentDifferenceMargin || getError(energyMiles, currentEnergyMiles) > percentDifferenceMargin) {
+        continue;
+      }
+      trailsRecommended.push(currentTrail);
+    }
+
+    console.log(trailsRecommended);
+    const bestRecommendation = trailsRecommended[0].geometry.coordinates[0][0];
+    const testGeo = {
+      type: "FeatureCollection",
+      features: trailsRecommended
+    } as any;
+    const recommendedLayer = L.geoJSON(testGeo, {
+      pane: 'CentroidMarkerPane',
+      style : {
+        weight: 10
+      },
+      onEachFeature(feature, layer) {
+        layer.bindPopup(feature.properties.name);
+      },
+    });
+    recommendedLayer.addTo(this.map);
   }
 
   ngAfterViewInit(): void {
@@ -1226,6 +1291,10 @@ function getTrailEnergyMiles(trail: TrailProperties): number {
 
 function getTrailShenandoahDifficulty(trail: TrailProperties): number {
   return Math.sqrt((metersToFt(trail.max_elevat - trail.min_elevat) * 2) * trail.length_mi_);
+}
+
+function getError(x: number, y: number) {
+  return Math.abs((y - x) / x);
 }
 
 function metersToFt(m: number): number {

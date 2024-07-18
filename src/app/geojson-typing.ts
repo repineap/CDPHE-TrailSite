@@ -5,7 +5,7 @@ export interface Geometry {
 
 export interface MultiGeometry {
   type: string;
-  coordinates: number[][][]
+  coordinates: Array<Array<[number, number]>>
 }
 
 export interface TrailheadProperties {
@@ -21,6 +21,8 @@ export interface TrailheadProperties {
   INPUT_DATE: string;
   EDIT_DATE: string;
   winter_act: string;
+  todayAQI: aqiStyle | undefined;
+  tomorrowAQI: aqiStyle | undefined;
 }
 
 export interface Trailhead {
@@ -39,6 +41,8 @@ export interface CityCenterProperties {
   state: string;
   Latitude: number;
   Longitude: number;
+  todayAQI: aqiStyle | undefined;
+  tomorrowAQI: aqiStyle | undefined;
 }
 
 export interface CityCenter {
@@ -91,6 +95,8 @@ export interface FacilityProperties {
   d_WINTER_S: string;
   d_SOURCE: string;
   d_SYM_CHAR: string;
+  todayAQI: aqiStyle | undefined;
+  tomorrowAQI: aqiStyle | undefined;
 }
 
 export interface Trail {
@@ -130,4 +136,11 @@ export interface TrailProperties {
   length_mi_: number;
   manager: string;
   SHAPE_STLe: number;
+  todayAQI: aqiStyle | undefined;
+  tomorrowAQI: aqiStyle | undefined;
+}
+
+export interface aqiStyle {
+  color: string;
+  styleUrl: any;
 }
