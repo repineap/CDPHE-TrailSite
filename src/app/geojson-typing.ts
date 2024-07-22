@@ -23,6 +23,7 @@ export interface TrailheadProperties {
   winter_act: string;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface Trailhead {
@@ -43,6 +44,7 @@ export interface CityCenterProperties {
   Longitude: number;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface CityCenter {
@@ -97,6 +99,7 @@ export interface FacilityProperties {
   d_SYM_CHAR: string;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface Trail {
@@ -138,6 +141,7 @@ export interface TrailProperties {
   SHAPE_STLe: number;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface aqiStyle {
