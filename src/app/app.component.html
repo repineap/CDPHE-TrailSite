@@ -22,6 +22,10 @@
             placeholder="Search Trails" />
     </div>
 </form>
-<app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)"></app-sideBar>
+<div class="relative">
+    <app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)" class="absolute top-0 left-0 w-[25%]"></app-sideBar>
+    <app-recommendation-sidebar [recommendedTrailheads]="recommendedTrailheads" class="absolute top-0 w-[25%]" (trailheadSelected)="zoomToTrailhead($event)" (closeRecommendations)="closeRecommendations($event)" [@slideInOut]="recommendationsOpen ? 'in' : 'out'"></app-recommendation-sidebar>
+</div>
+
 <app-descriptor-card [details]="selectedTrailhead" class="absolute top-[75%] left-[25%] w-[75%] p-4"></app-descriptor-card>
-<app-map (mapBoundsChange)="notifySidebar($event)" [(trailheadSelected)]="selectedTrailhead"></app-map>
+<app-map (mapBoundsChange)="notifySidebar($event)" (trailheadRecommendations)="notifyRecommendations($event)" [(trailheadSelected)]="selectedTrailhead"></app-map>

@@ -68,6 +68,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   @Input() trailheadSelected!: Trailhead;
   @Output() trailheadSelectedChange = new EventEmitter<Trailhead>();
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
+  @Output() trailheadRecommendations = new EventEmitter<Trailhead[]>();
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
 
@@ -1236,7 +1237,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     let closestTrailheads = ([...this.trailheadData.features] as Trailhead[]);
     closestTrailheads.forEach((trailhead) => {
       const distance = turf.distance(selectedPoint, turf.point(trailhead.geometry.coordinates), { units: 'miles' });
-      trailhead.properties.distanceFromSelectedMi = distance;
+      trailhead.properties.distanceFromSelectedMi = Math.round(distance * 100) / 100;
     });
 
     const aqiIndicies: { [key: string]: number} = {};
@@ -1273,22 +1274,19 @@ export class MapComponent implements AfterViewInit, OnChanges {
     if (!closestTrailheads[0].properties[aqiIndexString]) {
       return;
     }
-
-    console.log(closestTrailheads[0]);
     
     const selectedAQI = closestTrailheads[0].properties[aqiIndexString]?.styleUrl;
     closestTrailheads = closestTrailheads.slice(1);
 
     const maxAQIIndex = considerEqualAQI ? aqiIndicies[selectedAQI] : Math.max(0, aqiIndicies[selectedAQI] - 1);
 
-    console.log(`${maxAQIIndex} ${selectedAQI}`);
     closestTrailheads = closestTrailheads.filter((a) => {
       if (a.properties[aqiIndexString] == undefined || a.properties.distanceFromSelectedMi == undefined) return false;
       const aIndex = aqiIndicies[a.properties[aqiIndexString]?.styleUrl];
       return aIndex <= maxAQIIndex && a.properties.distanceFromSelectedMi <= maxDistanceMi;
     });
-    console.log(closestTrailheads);
-    return closestTrailheads.slice(0, trailsToRecommend);
+    this.trailheadRecommendations.emit([selectedTrailhead, ...closestTrailheads.slice(0, trailsToRecommend)]);
+    return [selectedTrailhead, ...closestTrailheads.slice(0, trailsToRecommend)];
   }
 
   ngAfterViewInit(): void {

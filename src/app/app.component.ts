@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, EventEmitter, HostListener, Output } from '@angular/core';
+import { Component, EventEmitter, Output } from '@angular/core';
 import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms'; // Import FormsModule
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
@@ -6,19 +6,34 @@ import { ShapeService } from './shape.service';
 import { MarkerService } from './marker.service';
 import { PopupService } from './popup.service';
 import { HttpClientModule } from '@angular/common/http';
-import {sideBarComponent} from './sideBar/sideBar.component'
+import { sideBarComponent } from './sideBar/sideBar.component';
 
 import * as L from 'leaflet';
-import { CityCenter, Trailhead } from './geojson-typing';
+import { Trailhead } from './geojson-typing';
 import { DescriptorCardComponent } from './descriptor-card/descriptor-card.component';
+import { RecommendationSidebarComponent } from "./recommendation-sidebar/recommendation-sidebar.component";
+import { CommonModule } from '@angular/common';
+import { trigger, state, style, transition, animate } from '@angular/animations';
 
 @Component({
-    selector: 'app-root',
-    standalone: true,
-    providers: [ShapeService, MarkerService, PopupService],
-    templateUrl: './app.component.html',
-    styleUrl: './app.component.css',
-    imports: [RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule]
+  selector: 'app-root',
+  standalone: true,
+  providers: [ShapeService, MarkerService, PopupService],
+  templateUrl: './app.component.html',
+  styleUrl: './app.component.css',
+  imports: [CommonModule, RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule, RecommendationSidebarComponent],
+  animations: [
+    trigger('slideInOut', [
+      state('in', style({
+        transform: 'translateX(0)'
+      })),
+      state('out', style({
+        transform: 'translateX(-100%)'
+      })),
+      transition('in => out', animate('300ms ease-in-out')),
+      transition('out => in', animate('300ms ease-in-out'))
+    ])
+  ]
 })
 
 export class AppComponent {
@@ -29,6 +44,8 @@ export class AppComponent {
   public selectedTrailhead!: Trailhead;
   public selectedTrailheadCoordinates!: [number, number];
   public searchControl = new FormControl('');
+  public recommendedTrailheads!: Trailhead[];
+  public recommendationsOpen: boolean = false;
 
   constructor() {
     this.searchControl.valueChanges.subscribe(value => {
@@ -42,6 +59,15 @@ export class AppComponent {
 
   public notifySidebar($event: L.LatLngBounds) {
     this.currentMapBounds = $event;
+  }
+
+  public notifyRecommendations($event: Trailhead[]) {
+    this.recommendedTrailheads = $event;
+    this.recommendationsOpen = true;
+  }
+
+  public closeRecommendations($event: boolean) {
+    this.recommendationsOpen = false;
   }
 
   searchQuery: string = '';
