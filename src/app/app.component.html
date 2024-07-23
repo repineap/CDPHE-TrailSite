@@ -22,10 +22,14 @@
             placeholder="Search Trails" />
     </div>
 </form>
+
 <div class="relative">
     <app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)" class="absolute top-0 left-0 w-[25%]"></app-sideBar>
     <app-recommendation-sidebar [recommendedTrailheads]="recommendedTrailheads" class="absolute top-0 w-[25%]" (trailheadSelected)="zoomToTrailhead($event)" (closeRecommendations)="closeRecommendations($event)" [@slideInOut]="recommendationsOpen ? 'in' : 'out'"></app-recommendation-sidebar>
 </div>
 
-<app-descriptor-card [details]="selectedTrailhead" class="absolute top-[75%] left-[25%] w-[75%] p-4"></app-descriptor-card>
-<app-map (mapBoundsChange)="notifySidebar($event)" (trailheadRecommendations)="notifyRecommendations($event)" [(trailheadSelected)]="selectedTrailhead"></app-map>
+<app-descriptor-card [details]="selectedTrailhead" class="absolute top-[75%] left-[25%] w-[75%] p-4" (openModal)="openModal()"></app-descriptor-card>
+<app-map (mapBoundsChange)="notifySidebar($event)" (trailheadRecommendations)="notifyRecommendations($event)" [(trailheadSelected)]="selectedTrailhead" [recommendationQuery]="currentRecommendationQuery"></app-map>
+<div *ngIf="isModalOpen" class="absolute z-[10000] top-[50%] left-[50%] w-[25%] min-w-[400px]">
+    <app-recommendation-modal (close)="closeModal()" (search)="generateRecommendations($event)" class="relative w-[100%]"></app-recommendation-modal>
+</div>

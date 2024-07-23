@@ -33,4 +33,12 @@ export class ShapeService {
   getCityShapes() {
     return this._http.get('/assets/data/Colorado_City_Point_Locations.geojson');
   }
+
+  getCountyShapes() {
+    return this._http.get('/assets/data/Colorado_County_Boundaries.geojson');
+  }
+
+  getNWSAlerts() {
+    return this._http.get('https://api.weather.gov/alerts/active/area/CO');
+  }
 }

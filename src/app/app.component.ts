@@ -7,9 +7,10 @@ import { MarkerService } from './marker.service';
 import { PopupService } from './popup.service';
 import { HttpClientModule } from '@angular/common/http';
 import { sideBarComponent } from './sideBar/sideBar.component';
+import { RecommendationModalComponent } from './recommendation-modal/recommendation-modal.component';
 
 import * as L from 'leaflet';
-import { Trailhead } from './geojson-typing';
+import { RecommendationQuery, Trailhead } from './geojson-typing';
 import { DescriptorCardComponent } from './descriptor-card/descriptor-card.component';
 import { RecommendationSidebarComponent } from "./recommendation-sidebar/recommendation-sidebar.component";
 import { CommonModule } from '@angular/common';
@@ -21,7 +22,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
   providers: [ShapeService, MarkerService, PopupService],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
-  imports: [CommonModule, RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule, RecommendationSidebarComponent],
+  imports: [CommonModule, RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule, RecommendationSidebarComponent, RecommendationModalComponent],
   animations: [
     trigger('slideInOut', [
       state('in', style({
@@ -46,6 +47,7 @@ export class AppComponent {
   public searchControl = new FormControl('');
   public recommendedTrailheads!: Trailhead[];
   public recommendationsOpen: boolean = false;
+  public currentRecommendationQuery!: RecommendationQuery;
 
   constructor() {
     this.searchControl.valueChanges.subscribe(value => {
@@ -86,5 +88,20 @@ export class AppComponent {
   zoomToTrailhead($event: Trailhead) {
     this.selectedTrailhead = $event;
     this.selectedTrailheadCoordinates = $event.geometry.coordinates;
+  }
+
+  isModalOpen: boolean = false;
+
+  openModal() {
+    this.isModalOpen = true;
+  }
+
+  closeModal() {
+    this.isModalOpen = false;
+  }
+
+  generateRecommendations(query: RecommendationQuery) {
+    this.currentRecommendationQuery = query;
+    this.closeModal();
   }
 }

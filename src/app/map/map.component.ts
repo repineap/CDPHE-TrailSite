@@ -9,7 +9,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { Facility, FacilityProperties, MultiGeometry, Trail, Trailhead, TrailheadProperties, TrailProperties } from '../geojson-typing';
+import { AQILevelStorage, Facility, FacilityProperties, MultiGeometry, RecommendationQuery, Trail, Trailhead, TrailheadProperties, TrailProperties, WeatherAlert, WeatherAlertJSON } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -53,6 +53,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private tomorrowAqiLayer!: L.GeoJSON;
   private trailheadData: any;
   private facilityData: any;
+  private countyData: any;
+  private alertData: any;
 
   private aqiPane!: HTMLElement;
   private trailPane!: HTMLElement;
@@ -68,6 +70,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
   @Input() trailheadSelected!: Trailhead;
   @Output() trailheadSelectedChange = new EventEmitter<Trailhead>();
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
+  @Input() recommendationQuery!: RecommendationQuery;
   @Output() trailheadRecommendations = new EventEmitter<Trailhead[]>();
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
@@ -143,32 +146,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
         <polygon points="3 11 22 2 13 21 11 13 3 11" />
       </svg>`
 
-      // div.addEventListener('click', () => {
-      //   this.setLocationMarker();
-      // });
-
-      // div.addEventListener('click', () => {
-      //   const randomTrail: Trail = this.trails.features[Math.floor(Math.random() * this.trails.features.length)];
-      //   this.map.setView([randomTrail.geometry.coordinates[0][0][1], randomTrail.geometry.coordinates[0][0][0]], 13);
-      //   L.circleMarker([randomTrail.geometry.coordinates[0][0][1], randomTrail.geometry.coordinates[0][0][0]]).addTo(this.map);
-      //   this.recommendTrails(randomTrail, true, 25);
-      // });
-
       div.addEventListener('click', () => {
-        const r = this.recommendTrailheads(this.trailheadSelected, !this.map.hasLayer(this.tomorrowAqiLayer), false, 25, 10);
-        this.currentRecommendedTrailheads.forEach((m) => {
-          m.removeFrom(this.map);
-        });
-        this.currentRecommendedTrailheads = [];
-        r?.forEach((th) => {
-          const coordinates: [number, number] = [th.geometry.coordinates[1], th.geometry.coordinates[0]]
-          const m = CL.marker6Points(coordinates, {
-            radius: 10,
-            color: 'orange'
-          })
-          m.addTo(this.map);
-          this.currentRecommendedTrailheads.push(m);
-        });
+        this.setLocationMarker();
       });
 
       return div;
@@ -902,6 +881,57 @@ export class MapComponent implements AfterViewInit, OnChanges {
     });
   }
 
+  private styleAlertData() {
+    const alerts = this.alertData.features as WeatherAlert[];
+    alerts.sort((alertA, alertB) => {
+      const alertAEffective = new Date(alertA.properties.effective).getTime();
+      const alertBEffective = new Date(alertB.properties.effective).getTime();
+      return Number(alertAEffective < alertBEffective);
+    });
+    const activeAlerts: { [key: string]: number } = {};
+
+    alerts.forEach((alert, i) => {
+      alert.properties.geocode.SAME.forEach((geocode) => {
+        if (!activeAlerts[geocode.substring(1)]) {
+          activeAlerts[geocode.substring(1)] = i;
+        }
+      });
+    });
+
+    this.countyData.features.forEach((county: any) => {
+      const activeAlert = activeAlerts[county.properties.US_FIPS];
+      if (activeAlert) {
+        county.properties.activeAlert = alerts[activeAlert];
+        county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);
+      } else {
+        county.properties.activeAlert = undefined;
+        county.properties.alertStyle = {
+          fillOpacity: 0,
+          weight: 5,
+          color: 'black'
+        };
+      }
+    });
+  }
+
+  private initAlertLayer() {
+    this.styleAlertData();
+
+    const countyLayer = L.geoJSON(this.countyData, {
+      style: (feature) => {
+        return feature?.properties.alertStyle;
+      },
+      onEachFeature(feature, layer) {
+        const featureAlert = feature.properties.activeAlert;
+        if (featureAlert) {
+          layer.bindPopup(featureAlert.properties.description);
+        }
+      },
+    });
+
+    this.layerControl.addOverlay(countyLayer, 'NWS Alerts');
+  }
+
   private initCentroidLayer() {
     const trailheadCoordinates = this.trailheadData.features.map((feature: any) => feature.geometry.coordinates);
 
@@ -1176,7 +1206,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const startPoint = turf.point(selectedTrail.geometry.coordinates[0][0]);
     const shenandoahDifficulty = getTrailShenandoahDifficulty(selectedTrail.properties);
     const energyMiles = getTrailEnergyMiles(selectedTrail.properties);
-    
+
     const closestTrails = ([...this.trails.features] as Trail[]);
     closestTrails.sort((a, b) => {
       return turf.distance(startPoint, turf.point(a.geometry.coordinates[0][0])) - turf.distance(startPoint, turf.point(b.geometry.coordinates[0][0]));
@@ -1189,7 +1219,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
       return;
     }
 
-    const aqiLevels: { [key: string]: number} = {};
+    const aqiLevels: { [key: string]: number } = {};
 
     aqiStyleUrls.forEach((style, i) => {
       aqiLevels[style] = i;
@@ -1221,7 +1251,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     } as any;
     const recommendedLayer = L.geoJSON(testGeo, {
       pane: 'CentroidMarkerPane',
-      style : {
+      style: {
         weight: 10
       },
       onEachFeature(feature, layer) {
@@ -1231,8 +1261,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
     recommendedLayer.addTo(this.map);
   }
 
-  private recommendTrailheads(selectedTrailhead: Trailhead, todayRecommendations: boolean, considerEqualAQI: boolean, trailsToRecommend: number, maxDistanceMi: number) {
+  private recommendTrailheads(selectedTrailhead: Trailhead, todayRecommendations: boolean, searchQuery: RecommendationQuery) {
     const selectedPoint = turf.point(selectedTrailhead.geometry.coordinates);
+    const aqiLevelsToConsider = searchQuery.aqiLevels
+    const trailsToRecommend = searchQuery.trailsToRecommend
+    const maxDistanceMi = searchQuery.maxDistanceMi;
 
     let closestTrailheads = ([...this.trailheadData.features] as Trailhead[]);
     closestTrailheads.forEach((trailhead) => {
@@ -1240,7 +1273,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
       trailhead.properties.distanceFromSelectedMi = Math.round(distance * 100) / 100;
     });
 
-    const aqiIndicies: { [key: string]: number} = {};
+    const aqiIndicies: { [key: string]: number } = {};
 
     aqiStyleUrls.forEach((style, i) => {
       aqiIndicies[style] = i;
@@ -1274,16 +1307,13 @@ export class MapComponent implements AfterViewInit, OnChanges {
     if (!closestTrailheads[0].properties[aqiIndexString]) {
       return;
     }
-    
-    const selectedAQI = closestTrailheads[0].properties[aqiIndexString]?.styleUrl;
-    closestTrailheads = closestTrailheads.slice(1);
 
-    const maxAQIIndex = considerEqualAQI ? aqiIndicies[selectedAQI] : Math.max(0, aqiIndicies[selectedAQI] - 1);
+    closestTrailheads = closestTrailheads.slice(1);
 
     closestTrailheads = closestTrailheads.filter((a) => {
       if (a.properties[aqiIndexString] == undefined || a.properties.distanceFromSelectedMi == undefined) return false;
-      const aIndex = aqiIndicies[a.properties[aqiIndexString]?.styleUrl];
-      return aIndex <= maxAQIIndex && a.properties.distanceFromSelectedMi <= maxDistanceMi;
+      const activeAQI: boolean = aqiLevelsToConsider[(a.properties[aqiIndexString]?.styleUrl as string)];
+      return a.properties.name !== '' && activeAQI && a.properties.distanceFromSelectedMi <= maxDistanceMi;
     });
     this.trailheadRecommendations.emit([selectedTrailhead, ...closestTrailheads.slice(0, trailsToRecommend)]);
     return [selectedTrailhead, ...closestTrailheads.slice(0, trailsToRecommend)];
@@ -1296,14 +1326,18 @@ export class MapComponent implements AfterViewInit, OnChanges {
       tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
       trailheadData: this._shapeService.getTrailheadShapes(),
       facilityData: this._shapeService.getFacilityShapes(),
-      trails: this._shapeService.getCotrexShapes()
+      trails: this._shapeService.getCotrexShapes(),
+      counties: this._shapeService.getCountyShapes(),
+      alerts: this._shapeService.getNWSAlerts()
     }).subscribe({
-      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData, trails }) => {
+      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData, trails, counties, alerts }) => {
         this.todayAqiData = todayAqiData;
         this.tomorrowAqiData = tomorrowAqiData;
         this.trailheadData = trailheadData;
         this.facilityData = facilityData;
         this.trails = trails;
+        this.countyData = counties;
+        this.alertData = alerts;
 
         this.initTodayAQILayer();
         this.initTomorrowAQILayer();
@@ -1314,6 +1348,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
         this.initAQILegend();
         this.initShapeLegend();
         this.initLocationSelector();
+        this.initAlertLayer();
+        
       }
     });
   }
@@ -1322,9 +1358,26 @@ export class MapComponent implements AfterViewInit, OnChanges {
     //Fires when a trailhead (or anything from the sidebar) is selected
     if (changes['trailheadSelected'] && changes['trailheadSelected'].currentValue) {
       const coordinates = this.trailheadSelected.geometry.coordinates;
-      this.map.setView([coordinates[1], coordinates[0]], END_GROUPING_ZOOM);
+      this.map.flyTo([coordinates[1], coordinates[0]], END_GROUPING_ZOOM, {
+        duration: 0.5
+      });
       this.selectedLocationMarker.setLatLng([coordinates[1], coordinates[0]]);
       this.selectedLocationMarker.addTo(this.map);
+    } else if (changes['recommendationQuery'] && changes['recommendationQuery'].currentValue) {
+      const r = this.recommendTrailheads(this.trailheadSelected, !this.map.hasLayer(this.tomorrowAqiLayer), this.recommendationQuery);
+      this.currentRecommendedTrailheads.forEach((m) => {
+        m.removeFrom(this.map);
+      });
+      this.currentRecommendedTrailheads = [];
+      r?.forEach((th) => {
+        const coordinates: [number, number] = [th.geometry.coordinates[1], th.geometry.coordinates[0]]
+        const m = CL.marker6Points(coordinates, {
+          radius: 10,
+          color: 'orange'
+        })
+        m.addTo(this.map);
+        this.currentRecommendedTrailheads.push(m);
+      });
     }
   }
 }

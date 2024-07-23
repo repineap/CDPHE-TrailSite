@@ -6,49 +6,55 @@
             <div class="flex flex-row items-center mr-4">
                 <span class="fa-stack fa-xl ">
                     <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
-                    <i class=" fa fa-solid fa-restroom  fa-stack-1x"></i>    
-                  </span>
-                  <div class="flex flex-col m-2" >
-                      <p class="text-lg  underline"> Bathroom</p>
-                      <p class="capitalize font-bold">{{details.properties.bathrooms}}</p>
+                    <i class=" fa fa-solid fa-restroom  fa-stack-1x"></i>
+                </span>
+                <div class="flex flex-col m-2">
+                    <p class="text-lg  underline"> Bathroom</p>
+                    <p class="capitalize font-bold">{{details.properties.bathrooms}}</p>
 
-                  </div>
+                </div>
             </div>
 
             <div class="flex flex-row items-center mr-4">
                 <span class="fa-stack fa-xl  ">
                     <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
-                    <i class=" fa fa-solid fa-dollar-sign fa-stack-1x"></i>    
-                  </span>
-                  <div class="flex flex-col m-2" >
-                      <p class="text-lg  underline">Fee</p>
-                      <p class=" capitalize font-bold">  {{details.properties.fee}}</p>
-                  </div>
+                    <i class=" fa fa-solid fa-dollar-sign fa-stack-1x"></i>
+                </span>
+                <div class="flex flex-col m-2">
+                    <p class="text-lg  underline">Fee</p>
+                    <p class=" capitalize font-bold"> {{details.properties.fee}}</p>
+                </div>
             </div>
 
             <div class="flex flex-row items-center mr-4">
                 <span class="fa-stack fa-xl ">
                     <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
-                    <i class=" fa fa-solid fa-bottle-water fa-stack-1x"></i>    
-                  </span>
-                  <div class="flex flex-col m-2" >
-                      <p  class="text-lg underline text-gray-900">Water</p>
-                      <p class=" capitalize font-bold"> {{details.properties.water}}</p>
-                  </div>
+                    <i class=" fa fa-solid fa-bottle-water fa-stack-1x"></i>
+                </span>
+                <div class="flex flex-col m-2">
+                    <p class="text-lg underline text-gray-900">Water</p>
+                    <p class=" capitalize font-bold"> {{details.properties.water}}</p>
+                </div>
             </div>
 
-              <div class="flex flex-row items-center mr-4">
+            <div class="flex flex-row items-center mr-4">
                 <span class="fa-stack fa-xl ">
                     <i class="fa fa-circle fa-stack-2x" style="color:rgb(225, 223, 223)"></i>
                     <i class=" fa fa-solid fa-user fa-stack-1x"></i>
-                  </span>
-                  <div class="flex flex-col m-2 " >
-                      <p  class="text-lg  underline">Manger</p>
-                      <p class="m-auto capitalize font-bold">{{details.properties.manager}}</p>
-                  </div>
+                </span>
+                <div class="flex flex-col m-2 ">
+                    <p class="text-lg  underline">Manger</p>
+                    <p class="m-auto capitalize font-bold">{{details.properties.manager}}</p>
+                </div>
             </div>
 
             <!-- <p>Coordinates: [{{details.geometry.coordinates}}]</p> -->
         </div>
+        <div class="absolute flex top-0 right-4 justify-center items-center h-full">
+            <button type="button" (click)="openModal.emit()"
+            class="text-white bg-gray-800 hover:bg-gray-900 focus:outline-none focus:ring-4 focus:ring-gray-300 font-medium rounded-lg text-sm px-5 py-2.5 me-2 mb-2 dark:bg-gray-800 dark:hover:bg-gray-700 dark:focus:ring-gray-700 dark:border-gray-700">Find
+            Recommendations</button>
+        </div>
+        
     </div>
 </div>
