@@ -7,7 +7,6 @@ import { ShapeService } from '../shape.service';
 import { filter, forkJoin } from 'rxjs';
 
 import { Trailhead, CityCenter, Geometry } from '../geojson-typing';
-import { GeoStylingService } from '../geo-styling.service';
 
 interface ClosestCityCenter {
   minDist: number,
@@ -26,28 +25,20 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   cityCenters: any;
   closestCityCenter: { [key: string]: ClosestCityCenter } = {};
   activeTrailheads!: Trailhead[];
-  private todayAQIData: any;
-  private tomorrowAQIData: any;
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   @Input() searchQuery = '';
   @Output() trailheadSelected = new EventEmitter<Trailhead>;
 
-  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
+  constructor(private _shapeService: ShapeService) { }
 
   ngAfterViewInit() {
     forkJoin({
-      todayAQI: this._shapeService.getTodayAQIShapes(),
-      tomorrowAQI: this._shapeService.getTomorrowAQIShapes(),
       cityCenters: this._shapeService.getCityShapes(),
       trailheads: this._shapeService.getTrailheadShapes()
     }).subscribe({
-      next: ({ todayAQI, tomorrowAQI, cityCenters, trailheads }) => {
-        this.todayAQIData = todayAQI;
-        this.tomorrowAQIData = tomorrowAQI;
+      next: ({ cityCenters, trailheads }) => {
         this.cityCenters = cityCenters;
         this.trailheads = trailheads;
-
-        this.styleTrailheadData();
 
         this.activeTrailheads = this.trailheads.features.filter((th: any) => { return th.properties.name !== '' });
         const mapCenter = this.mapBounds.getCenter();
@@ -74,45 +65,6 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
       }
     });
-  }
-
-  private styleTrailheadData() {
-    this.trailheads.features.forEach((th: any) => {
-      th.properties['todayAQI'] = this.getTodayAQIColor(th.geometry.coordinates);
-      th.properties['tomorrowAQI'] = this.getTomorrowAQIColor(th.geometry.coordinates);
-    });
-  }
-
-  private getTodayAQIColor(coordinates: [number, number]) {
-    for (let feature of this.todayAQIData.features) {
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
-        return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
-          styleUrl: feature.properties.styleUrl
-        };
-      }
-    }
-    return {
-      color: 'black',
-      styleUrl: 'N/A'
-    };
-  }
-
-  private getTomorrowAQIColor(coordinates: [number, number]) {
-    for (let feature of this.tomorrowAQIData.features) {
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
-        return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
-          styleUrl: feature.properties.styleUrl
-        };
-      }
-    }
-    return {
-      color: 'black',
-      styleUrl: 'N/A'
-    };
   }
 
   getClosestCityCenter(geometry: Geometry): ClosestCityCenter {
@@ -205,5 +157,8 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   update(trailHead: Trailhead) {
     this.trailheadSelected.emit(trailHead);
   }
+
+ 
+  
 
 }
