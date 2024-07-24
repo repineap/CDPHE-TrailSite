@@ -1,0 +1,121 @@
+<!-- search-modal.component.html -->
+<!-- <div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 w-96">
+      <div class="flex justify-between items-center">
+        <h2 class="text-lg font-semibold">Search</h2>
+        <button (click)="closeModal()" class="text-gray-500 hover:text-gray-700">
+          &times;
+        </button>
+      </div>
+      <div class="mt-4">
+        <input
+          type="text"
+          placeholder="Type your query"
+          [(ngModel)]="searchQuery"
+          class="w-full p-2 border border-gray-300 rounded-md"
+        />
+      </div>
+      <div class="mt-4 flex justify-end">
+        <button
+          (click)="performSearch()"
+          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
+        >
+          Search
+        </button>
+      </div>
+    </div>
+  </div> -->
+
+
+<!-- Main modal -->
+<div id="authentication-modal" tabindex="-1" aria-hidden="true"
+    class="overflow-y-auto overflow-x-hidden static translate-x-[-50%] translate-y-[-50%] z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
+    <div class="relative p-4 w-full max-w-md max-h-full">
+        <!-- Modal content -->
+        <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
+            <!-- Modal header -->
+            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+                <h3 class="text-xl text-center font-semibold text-gray-900 dark:text-white">
+                    Recommendation Query
+                </h3>
+                <button type="button" (click)="closeModal()"
+                    class="end-2.5 text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center dark:hover:bg-gray-600 dark:hover:text-white"
+                    data-modal-hide="authentication-modal">
+                    <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none"
+                        viewBox="0 0 14 14">
+                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6" />
+                    </svg>
+                    <span class="sr-only">Close modal</span>
+                </button>
+            </div>
+            <!-- Modal body -->
+            <div class="p-4 md:p-5">
+                <form class="space-y-4" action="#">
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">AQI Levels to Recommend</label>
+                        <div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Good']" name="good"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#Good"
+                                    style="accent-color: rgb(0, 228, 0); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="">Good</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Moderate']" name="moderate"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#Moderate"
+                                    style="accent-color: rgb(255, 255, 0); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="">Moderate</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#UnhealthySG']" name="sensitive"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#UnhealthySG"
+                                    style="accent-color: rgb(255, 126, 0); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="">Unhealthy
+                                    for Sensitive Groups</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Unhealthy']" name="unhealthy"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#Unhealthy"
+                                    style="accent-color: rgb(255, 0, 0); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="">Unhealthy</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#VeryUnhealthy']" name="veryunhealthy"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#VeryUnhealthy"
+                                    style="accent-color: rgb(153, 0, 76); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="">Very
+                                    Unhealthy</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Hazardous']" name="hazardous"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="#Hazardous"
+                                    style="accent-color: rgb(126, 0, 35); border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="">Hazardous</label></div>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Number of Trails to
+                            Recommend</label>
+                        <input type="number" name="trailsToRecommend" [(ngModel)]="searchQuery.trailsToRecommend"
+                            [min]="1" [value]="searchQuery.trailsToRecommend"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
+                    </div>
+                    <div>
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Max Distance from
+                            Selected Trailhead
+                            (miles)</label>
+                        <input type="number" step=".1" name="maxDistanceMi" [(ngModel)]="searchQuery.maxDistanceMi"
+                            [min]="0" [value]="searchQuery.maxDistanceMi"
+                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button (click)="performSearch()"
+                            class="w-full text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
+                            Show Recommendations
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

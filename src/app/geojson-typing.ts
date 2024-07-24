@@ -23,6 +23,7 @@ export interface TrailheadProperties {
   winter_act: string;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface Trailhead {
@@ -43,6 +44,7 @@ export interface CityCenterProperties {
   Longitude: number;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface CityCenter {
@@ -97,6 +99,7 @@ export interface FacilityProperties {
   d_SYM_CHAR: string;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface Trail {
@@ -138,9 +141,82 @@ export interface TrailProperties {
   SHAPE_STLe: number;
   todayAQI: aqiStyle | undefined;
   tomorrowAQI: aqiStyle | undefined;
+  distanceFromSelectedMi: number | undefined;
 }
 
 export interface aqiStyle {
   color: string;
   styleUrl: any;
+}
+
+export interface RecommendationQuery {
+  aqiLevels: AQILevelStorage,
+  trailsToRecommend: number, 
+  maxDistanceMi: number
+}
+
+export interface AQILevelStorage {
+  [key: string]: boolean
+  "#Good": boolean,
+  "#Moderate": boolean,
+  "#UnhealthySG": boolean,
+  "#Unhealthy": boolean,
+  "#VeryUnhealthy": boolean,
+  "#Hazardous": boolean
+}
+
+export interface WeatherAlertJSON {
+  "@context": string[],
+  features: WeatherAlert[],
+  title: string,
+  type: string,
+  updated: string
+}
+
+export interface WeatherAlert {
+  id: string;
+  type: string;
+  geometry: null;
+  properties: WeatherAlertProperties;
+}
+
+export interface WeatherAlertProperties {
+  "@id": string;
+  "@type": string;
+  id: string;
+  areaDesc: string;
+  geocode: Geocode;
+  affectedZones: string[];
+  references: any[];
+  sent: string;
+  effective: string;
+  onset: string;
+  expires: string;
+  ends: null;
+  status: string;
+  messageType: string;
+  category: string;
+  severity: string;
+  certainty: string;
+  urgency: string;
+  event: string;
+  sender: string;
+  senderName: string;
+  headline: string;
+  description: string;
+  instruction: null;
+  response: string;
+  parameters: WeatherAlertParameters;
+}
+
+export interface Geocode {
+  SAME: string[];
+  UGC: string[];
+}
+
+export interface WeatherAlertParameters {
+  AWIPSidentifier: string[];
+  WMOidentifier: string[];
+  NWSheadline: string[];
+  BLOCKCHANNEL: string[];
 }

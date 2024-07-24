@@ -53,6 +53,20 @@
   padding: 5px;
 }
 
+.modal-checkbox label {
+  position: relative;
+  bottom: 3px;
+  opacity: 1;
+}
+
+.modal-checkbox .legend-icon {
+  width: 18px;
+  height: 18px;
+  float: left;
+  margin: 0 8px 0 0;
+  opacity: 0.8;
+}
+
 /* Legend Styling */
 .legend {
   padding: 6px 8px;

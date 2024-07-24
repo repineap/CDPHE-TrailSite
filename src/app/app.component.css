@@ -24,3 +24,7 @@ app-map {
     bottom: 25%;
     right: 0;
 }
+
+app-recommendation-sidebar {
+    transform: translateX(-100%)
+}
