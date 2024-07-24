@@ -936,7 +936,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
       },
     });
 
-    this.layerControl.addOverlay(countyLayer, 'NWS Alerts');
+    // this.layerControl.addOverlay(countyLayer, 'NWS Alerts');
+    //TODO: Implement this as a new baselayer...
+    this.layerControl.addBaseLayer(countyLayer, 'NWS Alerts');
   }
 
   private initCentroidLayer() {

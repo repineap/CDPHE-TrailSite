@@ -63,49 +63,56 @@ const alertStyles: { [key: string]: any } = {
   "#OzoneActionDay": {
     "fillColor": "#FFA500",  // Orange for Ozone Action Day Alerts
     "fillOpacity": 0.81,
-    "color": "#FFA500",
+    // "color": "#FFA500",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
   "#ParticulatesActionDay": {
     "fillColor": "#FF4500",  // Red-Orange for Action Day for Particulates
     "fillOpacity": 0.81,
-    "color": "#FF4500",
+    // "color": "#FF4500",
+    "color": "black",
     "opacity": 1,
     "weight": 0
   },
   "#MultiplePollutantsActionDay": {
     "fillColor": "#5c005c",  // Purple color for Action Day for Multiple Pollutants
     "fillOpacity": 0.81,
-    "color": "#5c005c",
+    // "color": "#5c005c",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
   "#WildfireSmokeAdvisory": {
     "fillColor": "#636263",  // Gray for Wildfire Smoke Advisories
     "fillOpacity": 0.81,
-    "color": "#636263",
+    // "color": "#636263",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
   "#FineParticulatesAdvisory": {
     "fillColor": "#708090",  // Slate gray for Fine Particulates Advisories
     "fillOpacity": 0.81,
-    "color": "#708090",
+    // "color": "#708090",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
   "#OzoneAdvisory": {
     "fillColor": "#4682B4",  // Steel blue for Ozone Advisories
     "fillOpacity": 0.81,
-    "color": "#4682B4",
+    // "color": "#4682B4",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
   "#BlowingDustAdvisory": {
     "fillColor": "#D2B48C",  // Tan for Blowing Dust Advisories
     "fillOpacity": 0.81,
-    "color": "#D2B48C",
+    // "color": "#D2B48C",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
@@ -117,7 +124,8 @@ const alertStyles: { [key: string]: any } = {
     // "weight": 1.5
     "fillColor": "#5c005c",  // Purple color for Action Day for Multiple Pollutants
     "fillOpacity": 0.81,
-    "color": "#5c005c",
+    // "color": "#5c005c",
+    "color": "black",
     "opacity": 1,
     "weight": 1.5
   },
