@@ -3,6 +3,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* .leaflet-zoom-animated {
+  pointer-events: none;
+} */
+
 .circle-marker {
   position: absolute;
   border: 2px solid black;

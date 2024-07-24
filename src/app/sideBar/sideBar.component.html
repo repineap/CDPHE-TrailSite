@@ -2,7 +2,7 @@
     <label class="text-center mt-[1rem] ml-[1rem] text-gray-500" for="sidebar-container">Showing {{
         activeTrailheads.length > 50 ? 50 : activeTrailheads.length}} result(s) of {{ activeTrailheads.length }} total</label>
     <div id="sidebar-container"
-        class="flex flex-col  ml-[1rem] sidebar-container h-[85vh] overflow-y-scroll bg-gray-300 rounded-sm"
+        class="flex flex-col  ml-[1rem] w-full sidebar-container h-[85vh] overflow-y-scroll bg-gray-300 rounded-sm"
         *ngIf="activeTrailheads != undefined">
         <div class="grid border border-black rounded-md mt-3 w-[95%] ml-auto mr-auto shadow-lg bg-white"
             *ngFor="let trailHead of activeTrailheads.slice(0, 50)">
@@ -47,4 +47,3 @@
         </div>
     </div>
 </div>
-

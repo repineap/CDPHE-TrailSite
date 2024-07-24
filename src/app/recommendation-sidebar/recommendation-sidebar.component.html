@@ -1,13 +1,13 @@
 <div *ngIf="recommendedTrailheads != undefined" class="bg-white">
     <label class="text-center mt-[1rem] ml-[1rem] text-gray-500" for="sidebar-container">Showing {{
-        recommendedTrailheads.length - 1}} result(s) of {{ recommendedTrailheads.length - 1 }} total</label>
+        recommendedTrailheads.length - 1}} recommendation(s) of {{ recommendedTrailheads.length - 1 }} total</label>
     <button (click)="clearRecommendations()" class="absolute top-0 right-0">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 hover:bg-blue-500 hover:bg-opacity-[0.5]">
             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
           </svg>          
     </button>
     <div id="sidebar-container"
-        class="flex flex-col  ml-[1rem] sidebar-container h-[85vh] overflow-y-scroll bg-gray-300 rounded-sm">
+        class="flex flex-col  ml-[1rem] sidebar-container h-[85vh] overflow-y-scroll bg-gray-300 rounded-sm w-full">
         <div *ngIf="recommendedTrailheads.length > 1">
             <div class="grid border border-black rounded-md mt-3 w-[95%] ml-auto mr-auto shadow-lg bg-white"
                 *ngFor="let trailHead of recommendedTrailheads.slice(1)">
@@ -26,8 +26,24 @@
                     {{ trailHead.properties.distanceFromSelectedMi }} mi from
                     {{ recommendedTrailheads[0].properties.name }} trailhead.
                 </p>
-                <div class="justify-self-end mr-4 my-2">
-                    <button (click)='update(trailHead)'> <i class=" fa-solid fa-arrow-right"></i> </button>
+                <div class="flex flex-row justify-between">
+                    <div class="mt-4 mx-4">
+                        <p>Air Quality Levels:</p>
+                        <div class="flex flex-row">
+                            <div class="flex  items-center">
+                                <p>Today: </p>
+                                <div class=" border bordxer-2 h-4 w-4 m-2 rounded-sm" [style.background-color]="trailHead.properties.todayAQI?.color"></div>
+                            </div>
+                            <div class="flex items-center">
+                                <p>Tomorrow: </p>
+                                <div class=" h-4 w-4 m-2 rounded-sm" [style.background-color]="trailHead.properties.tomorrowAQI?.color"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="justify-self-end mr-4 my-2 self-end  ">
+                        <button (click)='update(trailHead)'> <i class=" fa-solid fa-arrow-right"></i> </button>
+                    </div>
                 </div>
             </div>
         </div>

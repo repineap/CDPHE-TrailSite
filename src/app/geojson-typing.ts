@@ -220,3 +220,12 @@ export interface WeatherAlertParameters {
   NWSheadline: string[];
   BLOCKCHANNEL: string[];
 }
+
+export interface WeatherAlertDescription {
+  issuer: string;
+  what: string;
+  where: string;
+  when: string;
+  impacts: string;
+  healthInformation: string;
+}

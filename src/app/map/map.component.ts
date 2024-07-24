@@ -9,7 +9,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { AQILevelStorage, Facility, FacilityProperties, MultiGeometry, RecommendationQuery, Trail, Trailhead, TrailheadProperties, TrailProperties, WeatherAlert, WeatherAlertJSON } from '../geojson-typing';
+import { AQILevelStorage, Facility, FacilityProperties, MultiGeometry, RecommendationQuery, Trail, Trailhead, TrailheadProperties, TrailProperties, WeatherAlert, WeatherAlertDescription, WeatherAlertJSON } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
@@ -80,7 +80,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.map = L.map('map', {
       center: [39, -105.7821],
       zoom: END_GROUPING_ZOOM - 5,
-      preferCanvas: true
+      preferCanvas: true,
+      doubleClickZoom: false
     });
 
     //The base map for the background, taken from OSM
@@ -106,6 +107,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     const userLocationPane = this.map.createPane('UserLocation');
     userLocationPane.style.zIndex = '620';
+
+    const alertPane = this.map.createPane('NWSAlert');
+    alertPane.style.zIndex = '503';
 
     OpenStreetMap_Mapnik.addTo(this.map);
     const layerOrder = ['Grouping Markers', 'Trailheads', 'Trails', 'Fishing Facilities', 'Camping Facilities']
@@ -907,7 +911,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         county.properties.activeAlert = undefined;
         county.properties.alertStyle = {
           fillOpacity: 0,
-          weight: 5,
+          weight: 1.5,
           color: 'black'
         };
       }
@@ -918,13 +922,16 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.styleAlertData();
 
     const countyLayer = L.geoJSON(this.countyData, {
+      pane: 'CustomMarkerPane',
       style: (feature) => {
         return feature?.properties.alertStyle;
       },
       onEachFeature(feature, layer) {
-        const featureAlert = feature.properties.activeAlert;
+        const featureAlert = feature.properties.activeAlert as WeatherAlert;
         if (featureAlert) {
-          layer.bindPopup(featureAlert.properties.description);
+          //TODO: Build a pop-up for the nws alerts
+          const descriptionData = parseNWSAlertDescription(featureAlert.properties.description);
+          layer.bindPopup(`<h1>${featureAlert.properties.parameters.NWSheadline}</h1>`);
         }
       },
     });
@@ -1441,4 +1448,26 @@ function metersToFt(m: number): number {
 
 function checkForEmpty(value: string): string {
   return value === '' ? 'N/A' : value;
+}
+
+function parseNWSAlertDescription(description: string): WeatherAlertDescription {
+  const issuerEnd = description.indexOf('...');
+  const whatStart = description.indexOf('\n\nWHAT...', issuerEnd) + '\n\nWHAT...'.length;
+  const whatEnd = description.indexOf('\n\nWHERE...');
+  const whereStart = description.indexOf('\n\nWHERE...', whatEnd) + '\n\nWHERE...'.length;
+  const whereEnd = description.indexOf('\n\nWHEN...');
+  const whenStart = description.indexOf('\n\nWHEN...', whereEnd) + '\n\nWHEN...'.length;
+  const whenEnd = description.indexOf('\n\nIMPACTS...');
+  const impactsStart = description.indexOf('\n\nIMPACTS...', whenEnd) + '\n\nIMPACTS...'.length;
+  const impactsEnd = description.indexOf('\n\nHEALTH INFORMATION...');
+  const healthStart = description.indexOf('\n\nHEALTH INFORMATION...', impactsEnd) + '\n\nHEALTH INFORMATION...'.length;
+  description = description.replaceAll('\n', ' ');
+  return {
+    issuer: description.substring(0, issuerEnd),
+    what: description.substring(whatStart, whatEnd),
+    where: description.substring(whereStart, whereEnd),
+    when: description.substring(whenStart, whenEnd),
+    impacts: description.substring(impactsStart, impactsEnd),
+    healthInformation: description.substring(healthStart)
+  }
 }

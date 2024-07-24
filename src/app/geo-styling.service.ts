@@ -65,7 +65,7 @@ const alertStyles: { [key: string]: any } = {
     "fillOpacity": 0.81,
     "color": "#FFA500",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#ParticulatesActionDay": {
     "fillColor": "#FF4500",  // Red-Orange for Action Day for Particulates
@@ -79,42 +79,47 @@ const alertStyles: { [key: string]: any } = {
     "fillOpacity": 0.81,
     "color": "#5c005c",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#WildfireSmokeAdvisory": {
     "fillColor": "#636263",  // Gray for Wildfire Smoke Advisories
     "fillOpacity": 0.81,
     "color": "#636263",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#FineParticulatesAdvisory": {
     "fillColor": "#708090",  // Slate gray for Fine Particulates Advisories
     "fillOpacity": 0.81,
     "color": "#708090",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#OzoneAdvisory": {
     "fillColor": "#4682B4",  // Steel blue for Ozone Advisories
     "fillOpacity": 0.81,
     "color": "#4682B4",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#BlowingDustAdvisory": {
     "fillColor": "#D2B48C",  // Tan for Blowing Dust Advisories
     "fillOpacity": 0.81,
     "color": "#D2B48C",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#MultiplePollutantsAdvisory": {
-    "fillColor": "#8B0000",  // Dark red for Multiple Pollutants Advisories
+    // "fillColor": "#8B0000",  // Dark red for Multiple Pollutants Advisories
+    // "fillOpacity": 0.81,
+    // "color": "#8B0000",
+    // "opacity": 1,
+    // "weight": 1.5
+    "fillColor": "#5c005c",  // Purple color for Action Day for Multiple Pollutants
     "fillOpacity": 0.81,
-    "color": "#8B0000",
+    "color": "#5c005c",
     "opacity": 1,
-    "weight": 5
+    "weight": 1.5
   },
   "#Default": {
     "fillColor": "orange",  // Should never be grabbed
