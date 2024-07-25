@@ -6,7 +6,7 @@ import * as turf from '@turf/turf';
 import { ShapeService } from '../shape.service';
 import { filter, forkJoin } from 'rxjs';
 
-import { Trailhead, CityCenter, Geometry } from '../geojson-typing';
+import { Trailhead, CityCenter, Geometry, FacilityProperties} from '../geojson-typing';
 
 interface ClosestCityCenter {
   minDist: number,
@@ -158,7 +158,27 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     this.trailheadSelected.emit(trailHead);
   }
 
- 
+
+    fishingDiv:boolean=false;
+    trailHeadDiv:boolean=true;
+    
+  
+  fishingFunction() {
+    this.fishingDiv=true;
+    this.trailHeadDiv=false
+  }
+
+  trailHeadFunction(){
+    this.fishingDiv=false;
+    this.trailHeadDiv=true;
+  }
+
+  // fishingDetails(){
+  //   const fishingFacilities = ['Boat Ramp', 'Boating', 'Fishing', 'Fishing - ADA Accessible', 'Marina'];
+
+   
+  //   }
+  // }
   
 
 }

@@ -1321,37 +1321,37 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   ngAfterViewInit(): void {
     this.initMap();
-    forkJoin({
-      todayAqiData: this._shapeService.getTodayAQIShapes(),
-      tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
-      trailheadData: this._shapeService.getTrailheadShapes(),
-      facilityData: this._shapeService.getFacilityShapes(),
-      trails: this._shapeService.getCotrexShapes(),
-      counties: this._shapeService.getCountyShapes(),
-      alerts: this._shapeService.getNWSAlerts()
-    }).subscribe({
-      next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData, trails, counties, alerts }) => {
-        this.todayAqiData = todayAqiData;
-        this.tomorrowAqiData = tomorrowAqiData;
-        this.trailheadData = trailheadData;
-        this.facilityData = facilityData;
-        this.trails = trails;
-        this.countyData = counties;
-        this.alertData = alerts;
+    // forkJoin({
+    //   todayAqiData: this._shapeService.getTodayAQIShapes(),
+    //   tomorrowAqiData: this._shapeService.getTomorrowAQIShapes(),
+    //   trailheadData: this._shapeService.getTrailheadShapes(),
+    //   facilityData: this._shapeService.getFacilityShapes(),
+    //   trails: this._shapeService.getCotrexShapes(),
+    //   counties: this._shapeService.getCountyShapes(),
+    //   alerts: this._shapeService.getNWSAlerts()
+    // }).subscribe({
+    //   next: ({ todayAqiData, tomorrowAqiData, trailheadData, facilityData, trails, counties, alerts }) => {
+    //     this.todayAqiData = todayAqiData;
+    //     this.tomorrowAqiData = tomorrowAqiData;
+    //     this.trailheadData = trailheadData;
+    //     this.facilityData = facilityData;
+    //     this.trails = trails;
+    //     this.countyData = counties;
+    //     this.alertData = alerts;
 
-        this.initTodayAQILayer();
-        this.initTomorrowAQILayer();
-        this.initTrailsLayer(false);
-        this.initTrailheadLayer();
-        this.initFacilityLayer();
-        this.initCentroidLayer();
-        this.initAQILegend();
-        this.initShapeLegend();
-        this.initLocationSelector();
-        this.initAlertLayer();
+    //     this.initTodayAQILayer();
+    //     this.initTomorrowAQILayer();
+    //     this.initTrailsLayer(false);
+    //     this.initTrailheadLayer();
+    //     this.initFacilityLayer();
+    //     this.initCentroidLayer();
+    //     this.initAQILegend();
+    //     this.initShapeLegend();
+    //     this.initLocationSelector();
+    //     this.initAlertLayer();
         
-      }
-    });
+    //   }
+    // });
   }
 
   ngOnChanges(changes: SimpleChanges): void {

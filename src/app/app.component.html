@@ -7,7 +7,14 @@
         </a>
     </div>
 </nav>
-<form class="max-w-md mx-auto trail-search" (ngSubmit)="false">
+
+<div class="flex flex-col ml-4">
+    <div class="flex justify-start">
+        <button class="border-2 text-sm p-2 bg-slate-100 hover:bg-gray-300 focus:bg-gray-300 rounded-md m-1"> Search Trail Heads</button>
+        <button class="border-2 text-sm p-2 bg-slate-100 hover:bg-gray-300 focus:bg-gray-300 rounded-md m-1"> Search Near You</button>
+    </div>
+    
+    <form class="max-w-md mx-auto trail-search" (ngSubmit)="false">
     <label for="default-search" class="mb-2 text-sm font-medium text-gray-900 sr-only dark:text-white">Search</label>
     <div class="relative">
         <div class="absolute inset-y-0 start-0 flex items-center ps-3 pointer-events-none">
@@ -18,10 +25,12 @@
             </svg>
         </div>
         <input #trailsearch type="search" id="default-search" name="searchQuery" [formControl]="searchControl" (keydown.backspace)="currentSearchQuery = ''"
-            class="block w-full p-4 ps-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+            class="block w-full p-4 ps-10 w-[10rem] text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
             placeholder="Search Trails" />
     </div>
 </form>
+</div>
+
 
 <div class="relative">
     <app-sideBar [mapBounds]="currentMapBounds" [searchQuery]="currentSearchQuery" (trailheadSelected)="zoomToTrailhead($event)" class="absolute top-0 left-0 w-[25%]"></app-sideBar>
