@@ -114,7 +114,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
     OpenStreetMap_Mapnik.addTo(this.map);
     const layerOrder = ['Grouping Markers', 'Trailheads', 'Trails', 'Fishing Facilities', 'Camping Facilities']
     this.layerControl = L.control.layers(undefined, undefined, {
-      collapsed: false,
       sortLayers: true,
       sortFunction: (layerA, layerB, nameA, nameB) => {
         return layerOrder.indexOf(nameA) - layerOrder.indexOf(nameB);
@@ -371,7 +370,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     aqiLayer.addTo(this.map);
 
-    this.layerControl.addBaseLayer(aqiLayer, "Today's AQI Levels")
+    this.layerControl.addBaseLayer(aqiLayer, "Today's AQI Forecast")
   }
 
   private initTomorrowAQILayer() {
@@ -393,7 +392,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
       // }
     });
 
-    this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Levels");
+    this.layerControl.addBaseLayer(this.tomorrowAqiLayer, "Tomorrow's AQI Forecast");
   }
 
   private initAQILegend() {
@@ -886,7 +885,8 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private styleAlertData() {
-    const alerts = this.alertData.features as WeatherAlert[];
+    let alerts = this.alertData.features as WeatherAlert[];
+    alerts = alerts.filter(alert => {return alert.properties.event === "Air Quality Alert"})
     alerts.sort((alertA, alertB) => {
       const alertAEffective = new Date(alertA.properties.effective).getTime();
       const alertBEffective = new Date(alertB.properties.effective).getTime();
@@ -905,8 +905,17 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.countyData.features.forEach((county: any) => {
       const activeAlert = activeAlerts[county.properties.US_FIPS];
       if (activeAlert) {
-        county.properties.activeAlert = alerts[activeAlert];
-        county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);
+        try {
+          county.properties.activeAlert = alerts[activeAlert];
+          county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);
+        } catch (error) {
+          county.properties.activeAlert = undefined;
+          county.properties.alertStyle = {
+            fillOpacity: 0,
+            weight: 1.5,
+            color: 'black'
+          };
+        }
       } else {
         county.properties.activeAlert = undefined;
         county.properties.alertStyle = {
@@ -931,14 +940,20 @@ export class MapComponent implements AfterViewInit, OnChanges {
         if (featureAlert) {
           //TODO: Build a pop-up for the nws alerts
           const descriptionData = parseNWSAlertDescription(featureAlert.properties.description);
-          layer.bindPopup(`<h1>${featureAlert.properties.parameters.NWSheadline}</h1>`);
+          const alertPopup = generateAlertPopup(descriptionData, feature.properties.FULL);
+          layer.bindPopup(alertPopup, {
+            className: 'rounded shadow-lg alert-card',
+            autoPanPaddingTopLeft: new L.Point(100, 0)
+          });
         }
       },
     });
 
-    // this.layerControl.addOverlay(countyLayer, 'NWS Alerts');
-    //TODO: Implement this as a new baselayer...
-    this.layerControl.addBaseLayer(countyLayer, 'NWS Alerts');
+    this.layerControl.addOverlay(countyLayer, 'Today\'s NWS Alerts');
+  }
+
+  private initAlertLegend() {
+
   }
 
   private initCentroidLayer() {
@@ -1472,4 +1487,79 @@ function parseNWSAlertDescription(description: string): WeatherAlertDescription 
     impacts: description.substring(impactsStart, impactsEnd),
     healthInformation: description.substring(healthStart)
   }
+}
+
+function generateAlertPopup(parsedDescription: WeatherAlertDescription, countyName: string): HTMLElement {
+  const card = document.createElement('div');
+
+  const title = document.createElement('h1');
+  title.className = 'text-center font-bold text-black';
+  title.innerText = countyName;
+  card.appendChild(title);
+
+  const what = document.createElement('h1');
+  what.className = 'text-gray-700 text-center';
+  what.innerText = parsedDescription.what;
+  card.appendChild(what);
+
+  const when = document.createElement('h1');
+  when.className = 'text-gray-700';
+  when.innerText = parsedDescription.when;
+  card.appendChild(when);
+
+  // Impacts section
+  const impactsSection = document.createElement('div');
+  impactsSection.className = 'mt-2';
+
+  const impactsButton = document.createElement('button');
+  impactsButton.className = 'text-blue-500 hover:text-blue-700';
+  impactsButton.innerText = 'Impacts';
+  impactsSection.appendChild(impactsButton);
+
+  const impactsContent = document.createElement('div');
+  impactsContent.className = 'text-gray-700 mt-2 hidden';
+  impactsContent.innerText = parsedDescription.impacts;
+  impactsSection.appendChild(impactsContent);
+
+  impactsButton.addEventListener('click', () => {
+    impactsContent.classList.toggle('hidden');
+  });
+
+  card.appendChild(impactsSection);
+
+  // Health Information section
+  const healthSection = document.createElement('div');
+  healthSection.className = 'mt-2';
+
+  const healthButton = document.createElement('button');
+  healthButton.className = 'text-blue-500 hover:text-blue-700';
+  healthButton.innerText = 'Health Information';
+  healthSection.appendChild(healthButton);
+
+  const healthContent = document.createElement('div');
+  healthContent.className = 'text-gray-700 mt-2 hidden';
+  healthContent.innerText = parsedDescription.healthInformation;
+  healthSection.appendChild(healthContent);
+
+  healthButton.addEventListener('click', () => {
+    healthContent.classList.toggle('hidden');
+  });
+
+  card.appendChild(healthSection);
+
+  //Link to Air Quality site
+
+  const linkSection = document.createElement('div');
+  linkSection.className = 'mt-2';
+
+  const summaryLink = document.createElement('a');
+  summaryLink.className = 'text-blue-500 hover:text-blue-700 decoration-none italic';
+  summaryLink.innerText = 'See More Information';
+  summaryLink.href = 'https://www.colorado.gov/airquality/colorado_summary.aspx';
+  summaryLink.target = '_blank';
+  linkSection.appendChild(summaryLink);
+
+  card.appendChild(linkSection);
+
+  return card;
 }

@@ -149,3 +149,7 @@
     display: none;
   }
 }
+
+.alert-card div {
+  overflow: hidden;
+}
