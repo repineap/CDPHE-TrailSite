@@ -10,5 +10,4 @@ import { Component, EventEmitter, Input, Output } from '@angular/core';
 })
 export class DescriptorCardComponent {
   @Input() details: any;
-  @Output() openModal = new EventEmitter();
 }

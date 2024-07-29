@@ -7,6 +7,10 @@
   pointer-events: none;
 } */
 
+.leaflet-AQI-pane {
+  pointer-events: none;
+}
+
 .circle-marker {
   position: absolute;
   border: 2px solid black;
@@ -76,7 +80,7 @@
   padding: 6px 8px;
   font: 14px Arial, Helvetica, sans-serif;
   /* background: white; */
-  background: rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.85);
   box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
   border-radius: 5px;
   line-height: 24px;
@@ -86,7 +90,6 @@
   text-align: center;
   font-size: 16px;
   font-weight: bold;
-  margin: 2px 12px 8px;
   color: #777;
 }
 
@@ -118,6 +121,12 @@
   opacity: 0.8;
 }
 
+.legend span {
+  position: relative;
+  bottom: 3px;
+  color: rgb(50, 50, 50);
+}
+
 .legend .legend-icon {
   width: 18px;
   height: 18px;
@@ -143,13 +152,28 @@
   font: 1em arial;
 }
 
-/* Mobile screen */
-@media (max-width: 1024px) {
-  .legend {
-    display: none;
-  }
-}
-
 .alert-card div {
   overflow: hidden;
+}
+
+/* width */
+::-webkit-scrollbar {
+  width: 15px;
+}
+
+/* Track */
+::-webkit-scrollbar-track {
+  background: #aaa;
+  border-radius: 5px;
+}
+
+/* Handle */
+::-webkit-scrollbar-thumb {
+  background: #666;
+  border-radius: 5px;
+}
+
+/* Handle on hover */
+::-webkit-scrollbar-thumb:hover {
+  background: #444;
 }

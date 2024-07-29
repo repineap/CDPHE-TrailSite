@@ -22,34 +22,33 @@ interface ClosestCityCenter {
   styleUrl: './sideBar.component.css'
 })
 export class sideBarComponent implements OnChanges, AfterViewInit {
-  trailheads: any;
+  trailheadData: any;
   cityCenters: any;
   closestCityCenter: { [key: string]: ClosestCityCenter } = {};
   activeTrailheads!: Trailhead[];
-  private todayAQIData: any;
-  private tomorrowAQIData: any;
+  private countyData: any;
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   @Input() searchQuery = '';
-  @Output() trailheadSelected = new EventEmitter<Trailhead>;
+  @Output() trailheadSelected = new EventEmitter<Trailhead>();
+  @Output() openModal = new EventEmitter<Trailhead>();
 
   constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
 
   ngAfterViewInit() {
     forkJoin({
-      todayAQI: this._shapeService.getTodayAQIShapes(),
-      tomorrowAQI: this._shapeService.getTomorrowAQIShapes(),
+      countyData: this._shapeService.getCountyShapes(),
       cityCenters: this._shapeService.getCityShapes(),
-      trailheads: this._shapeService.getTrailheadShapes()
+      trailheadData: this._shapeService.getTrailheadShapes()
     }).subscribe({
-      next: ({ todayAQI, tomorrowAQI, cityCenters, trailheads }) => {
-        this.todayAQIData = todayAQI;
-        this.tomorrowAQIData = tomorrowAQI;
+      next: ({ countyData, cityCenters, trailheadData }) => {
+        this.countyData = countyData;
         this.cityCenters = cityCenters;
-        this.trailheads = trailheads;
+        this.trailheadData = trailheadData;
 
-        this.styleTrailheadData();
-
-        this.activeTrailheads = this.trailheads.features.filter((th: any) => { return th.properties.name !== '' });
+        if (!this.trailheadData.features[0].properties.alertStyle) {
+          this.styleTrailheadData();
+        }
+        this.activeTrailheads = this.trailheadData.features.filter((th: any) => { return th.properties.name !== '' });
         const mapCenter = this.mapBounds.getCenter();
         this.activeTrailheads.sort((a, b) => {
           const aDistance = turf.distance([mapCenter.lat, mapCenter.lng], [a.geometry.coordinates[1], a.geometry.coordinates[0]]);
@@ -77,41 +76,24 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   }
 
   private styleTrailheadData() {
-    this.trailheads.features.forEach((th: any) => {
-      th.properties['todayAQI'] = this.getTodayAQIColor(th.geometry.coordinates);
-      th.properties['tomorrowAQI'] = this.getTomorrowAQIColor(th.geometry.coordinates);
+    this.trailheadData.features.forEach((th: any) => {
+      th.properties.alertStyle = this.getAlertColor(th.geometry.coordinates)
     });
   }
 
-  private getTodayAQIColor(coordinates: [number, number]) {
-    for (let feature of this.todayAQIData.features) {
+  private getAlertColor(coordinates: [number, number]) {
+    for (let feature of this.countyData.features) {
       const originalPolygon = feature.geometry;
       if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
         return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
-          styleUrl: feature.properties.styleUrl
+          color: feature.properties.alertStyle.fillColor + '88',
+          category: feature.properties.alertStyle.category
         };
       }
     }
     return {
       color: 'black',
-      styleUrl: 'N/A'
-    };
-  }
-
-  private getTomorrowAQIColor(coordinates: [number, number]) {
-    for (let feature of this.tomorrowAQIData.features) {
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
-        return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
-          styleUrl: feature.properties.styleUrl
-        };
-      }
-    }
-    return {
-      color: 'black',
-      styleUrl: 'N/A'
+      category: 'N/A'
     };
   }
 
@@ -144,10 +126,10 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   }
 
   private handleBoundsChange() {
-    if (this.trailheads == undefined) {
+    if (this.trailheadData == undefined) {
       return;
     }
-    this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
+    this.activeTrailheads = this.trailheadData.features.filter((th: Trailhead) => {
       const coordinates = th.geometry.coordinates;
       const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
       const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
@@ -171,7 +153,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
   }
 
   private handleQueryChange() {
-    if (this.trailheads == undefined) {
+    if (this.trailheadData == undefined) {
       return;
     }
 
@@ -180,7 +162,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
       this.handleBoundsChange();
       return;
     }
-    this.activeTrailheads = this.trailheads.features.filter((th: Trailhead) => {
+    this.activeTrailheads = this.trailheadData.features.filter((th: Trailhead) => {
       const closestCityCenter = this.closestCityCenter[th.properties.feature_id];
       const filterString = `${th.properties.name}${th.properties.manager}${closestCityCenter !== undefined ? `${closestCityCenter.minCityCenter.properties.name}, ${closestCityCenter.minCityCenter.properties.county} County, CO ${closestCityCenter.minCityCenter.properties.name}, CO` : ''}`
       return th.properties.name !== '' && filterString.toLowerCase().includes(this.searchQuery.toLowerCase());
