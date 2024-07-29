@@ -485,7 +485,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
   private initTrailheadLayer() {
 
-    if (!this.trailheadData.features[0].properties.alertStyle) {
+    if (!this.trailheadData.features[this.trailheadData.features.length - 1].properties.alertStyle) {
       this.styleTrailheadData();
     }
 
@@ -599,7 +599,11 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initAlertLayer() {
-    this.styleAlertData();
+
+    if (!this.countyData.features[this.countyData.features.length - 1].properties.alertStyle) {
+      this.styleAlertData();
+    }
+
 
     const countyLayer = L.geoJSON(this.countyData, {
       pane: 'CustomMarkerPane',

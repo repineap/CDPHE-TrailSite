@@ -6,7 +6,7 @@ import * as turf from '@turf/turf';
 import { ShapeService } from '../shape.service';
 import { filter, forkJoin } from 'rxjs';
 
-import { Trailhead, CityCenter, Geometry } from '../geojson-typing';
+import { Trailhead, CityCenter, Geometry, WeatherAlert } from '../geojson-typing';
 import { GeoStylingService } from '../geo-styling.service';
 
 interface ClosestCityCenter {
@@ -22,11 +22,12 @@ interface ClosestCityCenter {
   styleUrl: './sideBar.component.css'
 })
 export class sideBarComponent implements OnChanges, AfterViewInit {
-  trailheadData: any;
-  cityCenters: any;
-  closestCityCenter: { [key: string]: ClosestCityCenter } = {};
-  activeTrailheads!: Trailhead[];
+  private trailheadData: any;
+  private cityCenters: any;
   private countyData: any;
+  private alertData: any;
+  public closestCityCenter: { [key: string]: ClosestCityCenter } = {};
+  public activeTrailheads!: Trailhead[];
   @Input() mapBounds = L.latLngBounds(L.latLng(37.18657859524883, -109.52819824218751), L.latLng(40.76806170936614, -102.04101562500001));
   @Input() searchQuery = '';
   @Output() trailheadSelected = new EventEmitter<Trailhead>();
@@ -38,16 +39,23 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
     forkJoin({
       countyData: this._shapeService.getCountyShapes(),
       cityCenters: this._shapeService.getCityShapes(),
-      trailheadData: this._shapeService.getTrailheadShapes()
+      trailheadData: this._shapeService.getTrailheadShapes(),
+      alertData: this._shapeService.getNWSAlerts()
     }).subscribe({
-      next: ({ countyData, cityCenters, trailheadData }) => {
+      next: ({ countyData, cityCenters, trailheadData, alertData }) => {
         this.countyData = countyData;
         this.cityCenters = cityCenters;
         this.trailheadData = trailheadData;
+        this.alertData = alertData;
 
-        if (!this.trailheadData.features[0].properties.alertStyle) {
+        if (!this.countyData.features[this.countyData.features.length - 1].properties.alertStyle) {
+          this.styleAlertData();
+        }
+
+        if (!this.trailheadData.features[this.trailheadData.features.length - 1].properties.alertStyle) {
           this.styleTrailheadData();
         }
+
         this.activeTrailheads = this.trailheadData.features.filter((th: any) => { return th.properties.name !== '' });
         const mapCenter = this.mapBounds.getCenter();
         this.activeTrailheads.sort((a, b) => {
@@ -71,6 +79,41 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
           this.closestCityCenter[feature_id] = this.getClosestCityCenter(th.geometry);
         });
 
+      }
+    });
+  }
+
+  private styleAlertData() {
+    let alerts = this.alertData.features as WeatherAlert[];
+    alerts = alerts.filter(alert => {return alert.properties.event === "Air Quality Alert"})
+    alerts.sort((alertA, alertB) => {
+      const alertAEffective = new Date(alertA.properties.effective).getTime();
+      const alertBEffective = new Date(alertB.properties.effective).getTime();
+      return Number(alertAEffective < alertBEffective);
+    });
+    const activeAlerts: { [key: string]: number } = {};
+
+    alerts.forEach((alert, i) => {
+      alert.properties.geocode.SAME.forEach((geocode) => {
+        if (!activeAlerts[geocode.substring(1)]) {
+          activeAlerts[geocode.substring(1)] = i;
+        }
+      });
+    });
+
+    this.countyData.features.forEach((county: any) => {
+      const activeAlert = activeAlerts[county.properties.US_FIPS];
+      if (activeAlert) {
+        try {
+          county.properties.activeAlert = alerts[activeAlert];
+          county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);
+        } catch (error) {
+          county.properties.activeAlert = undefined;
+          county.properties.alertStyle = this._styleService.getStyleForAlert('none');
+        }
+      } else {
+        county.properties.activeAlert = undefined;
+        county.properties.alertStyle = this._styleService.getStyleForAlert('none');
       }
     });
   }
