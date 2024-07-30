@@ -3,7 +3,6 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms'; 
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
 import { ShapeService } from './shape.service';
-import { MarkerService } from './marker.service';
 import { PopupService } from './popup.service';
 import { HttpClientModule } from '@angular/common/http';
 import { sideBarComponent } from './sideBar/sideBar.component';
@@ -19,7 +18,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 @Component({
   selector: 'app-root',
   standalone: true,
-  providers: [ShapeService, MarkerService, PopupService],
+  providers: [ShapeService, PopupService],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
   imports: [CommonModule, RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule, RecommendationSidebarComponent, RecommendationModalComponent],

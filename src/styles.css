@@ -86,6 +86,15 @@
   line-height: 24px;
 }
 
+.trail-legend {
+  font: 14px Arial, Helvetica, sans-serif;
+  /* background: white; */
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+  padding: 3px 5px;
+  border-radius: 5px;
+}
+
 .legend h4 {
   text-align: center;
   font-size: 16px;
@@ -176,4 +185,8 @@
 /* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
+}
+
+.trail-popup-body p {
+  margin: 3px 0;
 }

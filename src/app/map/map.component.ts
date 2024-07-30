@@ -11,6 +11,7 @@ import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
 import { RecommendationQuery, Trail, Trailhead, TrailheadProperties, TrailProperties, WeatherAlert, WeatherAlertDescription } from '../geojson-typing';
 import { NgIf } from '@angular/common';
+import { PopupService } from '../popup.service';
 
 const iconRetinaUrl = 'assets/marker-icon-2x.png';
 const iconUrl = 'assets/marker-icon.png';
@@ -48,29 +49,25 @@ export class MapComponent implements AfterViewInit, OnChanges {
   private map!: L.Map;
   private trailData: any;
   private todayAqiData: any;
-  private todayColoradoAqiData: any
   private tomorrowAqiData: any;
-  private tomorrowColoradoAqiData: any
   private tomorrowAqiLayer!: L.GeoJSON;
   private trailheadData: any;
   private countyData: any;
   public alertData: any;
 
   private aqiPane!: HTMLElement;
-  private trailPane!: HTMLElement;
   private locationPane!: HTMLElement;
   private customMarkerPane!: HTMLElement;
   private layerControl!: L.Control.Layers;
   private userLocationMarker!: L.Marker;
 
   private alertLayerStructure: AlertStructure[] = [];
-  private currentRecommendedTrailheads: L.Marker[] = [];
 
   @Input() trailheadSelected!: Trailhead;
   @Output() trailheadSelectedChange = new EventEmitter<Trailhead>();
   @Output() mapBoundsChange = new EventEmitter<L.LatLngBounds>();
 
-  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService) { }
+  constructor(private _shapeService: ShapeService, private _styleService: GeoStylingService, private _popupService: PopupService) { }
 
   private initMap() {
     //Intializes the map to the center of Colorado with a zoom of 8
@@ -191,35 +188,42 @@ export class MapComponent implements AfterViewInit, OnChanges {
         color: 'black'
       }),
       onEachFeature: (feature, layer) => {
-        const popupContent = this.createTrailPopup(feature as Trail)
-        layer.bindPopup(popupContent);
+        const popupContent = this._popupService.createTrailPopup(feature as Trail, )
+        layer.bindPopup(popupContent, {
+          className: 'rounded shadow-lg alert-card',
+          minWidth: 175
+        });
       }
-    })
+    });
 
-    this.layerControl.addOverlay(trailLayer, "Trails");
-  }
+    const activateTrailsLegend = L.control.layers(undefined, undefined, { position: "topright" });
 
-  private createTrailPopup(trail: Trail): string {
-    const popupContent =
-      `<p>Name: ${checkForEmpty(trail.properties.name)}</p>
-    <p>Type: ${checkForEmpty(trail.properties.type)}</p>
-    <p>${trail.properties.length_mi_} miles long</p>
-    <p>Energy Miles: ${getTrailEnergyMiles(trail.properties)}</p>
-    <p>Shenandoah Difficulty: ${getTrailShenandoahDifficulty(trail.properties)}</p>
-    <p>Surface: ${checkForEmpty(trail.properties.surface)}</p>
-    <p>Max Elevation: ${metersToFt(trail.properties.max_elevat)}</p>
-    <p>Min Elevation: ${metersToFt(trail.properties.min_elevat)}</p>
-    <p>Oneway: ${checkForEmpty(trail.properties.oneway)}</p>
-    <p>ATV: ${checkForEmpty(trail.properties.atv)}</p>
-    <p>Motorcycle: ${checkForEmpty(trail.properties.motorcycle)}</p>
-    <p>Horse: ${checkForEmpty(trail.properties.horse)}</p>
-    <p>Hiking: ${checkForEmpty(trail.properties.hiking)}</p>
-    <p>Biking: ${checkForEmpty(trail.properties.bike)}</p>
-    <p>Dogs: ${checkForEmpty(trail.properties.dogs)}</p>
-    <p>Highway Vehicle: ${checkForEmpty(trail.properties.highway_ve)}</p>
-    <p>Off-Highway Vehicle greater than 50 inches wide: ${checkForEmpty(trail.properties.ohv_gt_50)}</p>
-    <p>Access: ${checkForEmpty(trail.properties.access)}</p>`;
-    return popupContent;
+    activateTrailsLegend.onAdd = (map) => {
+      var div = L.DomUtil.create("div", "trail-legend");
+
+      const checkboxContainer = L.DomUtil.create('div', 'flex items-center me-4 legend-checkbox', div);
+      const checkbox = L.DomUtil.create('input', 'legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600', checkboxContainer);
+      checkbox.type = 'checkbox';
+      checkbox.style.accentColor = 'black'
+      checkbox.style.border = '1px solid black';
+      checkbox.checked = false;
+      checkbox.value = 'trailsActivated';
+      checkbox.addEventListener('click', () => {
+        if (checkbox.checked) {
+          this.map.addLayer(trailLayer);
+        } else {
+          this.map.removeLayer(trailLayer);
+        }
+      });
+  
+      const label = L.DomUtil.create('label', 'ms-1 text-sm font-medium text-gray-900 dark:text-gray-300 align-center', checkboxContainer);
+      label.htmlFor = checkbox.id;
+      label.textContent = 'See Trails';
+
+      return div;
+    }
+
+    activateTrailsLegend.addTo(this.map);
   }
 
   private groupTrails(geojson: any): any {
@@ -256,22 +260,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initTodayAQILayer() {
-    const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
-    const coloradoPoly = turf.bboxPolygon(coloradoBBox);
-    this.todayColoradoAqiData = {
-      "type": "FeatureCollection",
-      "features": this.todayAqiData.features.filter((feature: any) => {
-        return turf.booleanIntersects(feature.geometry, coloradoPoly);
-      })
-    }
-
     const aqiLayer = L.geoJSON(this.todayAqiData, {
       interactive: false,
       pane: 'AQIPane',
-      style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
-      // onEachFeature: (feature, layer) => {
-      //   layer.bindPopup(feature.properties.description);
-      // },
+      style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl))
     });
 
 
@@ -279,22 +271,10 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initTomorrowAQILayer() {
-    const coloradoBBox: [number, number, number, number] = [-109.05919619986199, 36.99275055519555, -102.04212644366443, 41.00198213121131];
-    const coloradoPoly = turf.bboxPolygon(coloradoBBox);
-    this.tomorrowColoradoAqiData = {
-      "type": "FeatureCollection",
-      "features": this.tomorrowAqiData.features.filter((feature: any) => {
-        return turf.booleanIntersects(feature.geometry, coloradoPoly);
-      })
-    }
-
     this.tomorrowAqiLayer = L.geoJSON(this.tomorrowAqiData, {
       interactive: false,
       pane: 'AQIPane',
       style: (feature) => (this._styleService.getStyleForAQI(feature?.properties.styleUrl)),
-      // onEachFeature: (feature, layer) => {
-      //   layer.bindPopup(feature.properties.description);
-      // }
     });
 
     this.layerControl.addOverlay(this.tomorrowAqiLayer, "Tomorrow's AQI Forecast");
@@ -610,15 +590,14 @@ export class MapComponent implements AfterViewInit, OnChanges {
       style: (feature) => {
         return feature?.properties.alertStyle;
       },
-      onEachFeature(feature, layer) {
+      onEachFeature: (feature, layer) => {
         const featureAlert = feature.properties.activeAlert as WeatherAlert;
         if (featureAlert) {
           //TODO: Build a pop-up for the nws alerts
-          const descriptionData = parseNWSAlertDescription(featureAlert.properties.description);
-          const alertPopup = generateAlertPopup(descriptionData, feature.properties.FULL);
+          const descriptionData = this._popupService.parseNWSAlertDescription(featureAlert.properties.description);
+          const alertPopup = this._popupService.generateAlertPopup(descriptionData, feature.properties.FULL);
           layer.bindPopup(alertPopup, {
             className: 'rounded shadow-lg alert-card',
-            autoPanPaddingTopLeft: new L.Point(100, 0)
           });
         } else {
           const goodPopup = `<div><h1 class="text-center font-bold text-black">${feature.properties.FULL}</h1><h1 class="text-gray-700 text-center">No alerts for this area.</h1></div>`
@@ -758,38 +737,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
     this.layerControl.addOverlay(alertCentroidGroup, 'Grouping Markers');
   }
 
-  private getTodayAQIColor(coordinates: [number, number]) {
-    for (let feature of this.todayColoradoAqiData.features) {
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
-        return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).fillColor + '88',
-          styleUrl: feature.properties.styleUrl
-        };
-      }
-    }
-    return {
-      color: 'black',
-      styleUrl: 'N/A'
-    };
-  }
-
-  private getTomorrowAQIColor(coordinates: [number, number]) {
-    for (let feature of this.tomorrowColoradoAqiData.features) {
-      const originalPolygon = feature.geometry;
-      if (turf.booleanIntersects(originalPolygon, turf.point(coordinates))) {
-        return {
-          color: this._styleService.getStyleForAQI(feature.properties.styleUrl).color + '88',
-          styleUrl: feature.properties.styleUrl
-        };
-      }
-    }
-    return {
-      color: 'black',
-      styleUrl: 'N/A'
-    };
-  }
-
   private getAlertColor(coordinates: [number, number]) {
     for (let feature of this.countyData.features) {
       const originalPolygon = feature.geometry;
@@ -892,122 +839,3 @@ function createCustomIcon(count: number, color: string, shape: string) {
   }
 }
 
-/*
-  Calculated based on https://www.pigeonforge.com/hike-difficulty/#:~:text=Petzoldt%20recommended%20adding%20two%20energy,formulas%20for%20calculating%20trail%20difficulty.
-*/
-function getTrailEnergyMiles(trail: TrailProperties): number {
-  return trail.length_mi_ + (metersToFt(trail.max_elevat - trail.min_elevat)) / 500;
-}
-
-function getTrailShenandoahDifficulty(trail: TrailProperties): number {
-  return Math.sqrt((metersToFt(trail.max_elevat - trail.min_elevat) * 2) * trail.length_mi_);
-}
-
-function getError(x: number, y: number) {
-  return Math.abs((y - x) / x);
-}
-
-function metersToFt(m: number): number {
-  return m * 3.280839895;
-}
-
-function checkForEmpty(value: string): string {
-  return value === '' ? 'N/A' : value;
-}
-
-function parseNWSAlertDescription(description: string): WeatherAlertDescription {
-  const issuerEnd = description.indexOf('...');
-  const whatStart = description.indexOf('\n\nWHAT...', issuerEnd) + '\n\nWHAT...'.length;
-  const whatEnd = description.indexOf('\n\nWHERE...');
-  const whereStart = description.indexOf('\n\nWHERE...', whatEnd) + '\n\nWHERE...'.length;
-  const whereEnd = description.indexOf('\n\nWHEN...');
-  const whenStart = description.indexOf('\n\nWHEN...', whereEnd) + '\n\nWHEN...'.length;
-  const whenEnd = description.indexOf('\n\nIMPACTS...');
-  const impactsStart = description.indexOf('\n\nIMPACTS...', whenEnd) + '\n\nIMPACTS...'.length;
-  const impactsEnd = description.indexOf('\n\nHEALTH INFORMATION...');
-  const healthStart = description.indexOf('\n\nHEALTH INFORMATION...', impactsEnd) + '\n\nHEALTH INFORMATION...'.length;
-  description = description.replaceAll('\n', ' ');
-  return {
-    issuer: description.substring(0, issuerEnd),
-    what: description.substring(whatStart, whatEnd),
-    where: description.substring(whereStart, whereEnd),
-    when: description.substring(whenStart, whenEnd),
-    impacts: description.substring(impactsStart, impactsEnd),
-    healthInformation: description.substring(healthStart)
-  }
-}
-
-function generateAlertPopup(parsedDescription: WeatherAlertDescription, countyName: string): HTMLElement {
-  const card = document.createElement('div');
-
-  const title = document.createElement('h1');
-  title.className = 'text-center font-bold text-black';
-  title.innerText = countyName;
-  card.appendChild(title);
-
-  const what = document.createElement('h1');
-  what.className = 'text-gray-700 text-center';
-  what.innerText = parsedDescription.what;
-  card.appendChild(what);
-
-  const when = document.createElement('h1');
-  when.className = 'text-gray-700';
-  when.innerText = parsedDescription.when;
-  card.appendChild(when);
-
-  // Impacts section
-  const impactsSection = document.createElement('div');
-  impactsSection.className = 'mt-2';
-
-  const impactsButton = document.createElement('button');
-  impactsButton.className = 'text-blue-500 hover:text-blue-700';
-  impactsButton.innerText = 'Impacts';
-  impactsSection.appendChild(impactsButton);
-
-  const impactsContent = document.createElement('div');
-  impactsContent.className = 'text-gray-700 mt-2 hidden';
-  impactsContent.innerText = parsedDescription.impacts;
-  impactsSection.appendChild(impactsContent);
-
-  impactsButton.addEventListener('click', () => {
-    impactsContent.classList.toggle('hidden');
-  });
-
-  card.appendChild(impactsSection);
-
-  // Health Information section
-  const healthSection = document.createElement('div');
-  healthSection.className = 'mt-2';
-
-  const healthButton = document.createElement('button');
-  healthButton.className = 'text-blue-500 hover:text-blue-700';
-  healthButton.innerText = 'Health Information';
-  healthSection.appendChild(healthButton);
-
-  const healthContent = document.createElement('div');
-  healthContent.className = 'text-gray-700 mt-2 hidden';
-  healthContent.innerText = parsedDescription.healthInformation;
-  healthSection.appendChild(healthContent);
-
-  healthButton.addEventListener('click', () => {
-    healthContent.classList.toggle('hidden');
-  });
-
-  card.appendChild(healthSection);
-
-  //Link to Air Quality site
-
-  const linkSection = document.createElement('div');
-  linkSection.className = 'mt-2';
-
-  const summaryLink = document.createElement('a');
-  summaryLink.className = 'text-blue-500 hover:text-blue-700 decoration-none italic';
-  summaryLink.innerText = 'See More Information';
-  summaryLink.href = 'https://www.colorado.gov/airquality/colorado_summary.aspx';
-  summaryLink.target = '_blank';
-  linkSection.appendChild(summaryLink);
-
-  card.appendChild(linkSection);
-
-  return card;
-}
