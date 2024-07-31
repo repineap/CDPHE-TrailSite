@@ -208,6 +208,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
       checkbox.style.border = '1px solid black';
       checkbox.checked = false;
       checkbox.value = 'trailsActivated';
+      checkbox.id = 'trail-checkbox'
       checkbox.addEventListener('click', () => {
         if (checkbox.checked) {
           this.map.addLayer(trailLayer);
@@ -405,6 +406,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
         checkbox.style.border = '1px solid black';
         checkbox.checked = true;
         checkbox.value = alert.category;
+        checkbox.id = alert.category;
         checkbox.addEventListener('click', () => this.alertCheckboxClicked(alert.styleIndex, checkbox.checked));
     
         const label = L.DomUtil.create('label', 'ms-1 text-sm font-medium text-gray-900 dark:text-gray-300', checkboxContainer);
