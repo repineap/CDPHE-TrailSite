@@ -199,7 +199,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     const activateTrailsLegend = L.control.layers(undefined, undefined, { position: "topright" });
 
     activateTrailsLegend.onAdd = (map) => {
-      var div = L.DomUtil.create("div", "trail-legend");
+      var div = L.DomUtil.create("div", "trail-legend legend flex");
 
       const checkboxContainer = L.DomUtil.create('div', 'flex items-center me-4 legend-checkbox', div);
       const checkbox = L.DomUtil.create('input', 'legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600', checkboxContainer);
@@ -217,9 +217,9 @@ export class MapComponent implements AfterViewInit, OnChanges {
         }
       });
   
-      const label = L.DomUtil.create('label', 'ms-1 text-sm font-medium text-gray-900 dark:text-gray-300 align-center', checkboxContainer);
+      const label = L.DomUtil.create('label', 'ms-1 text-base text-center font-bold text-gray-700 dark:text-gray-300 align-center', checkboxContainer);
       label.htmlFor = checkbox.id;
-      label.textContent = 'See Trails';
+      label.textContent = 'View Trails';
 
       return div;
     }
@@ -443,15 +443,34 @@ export class MapComponent implements AfterViewInit, OnChanges {
   }
 
   private initShapeLegend() {
-    var legend = L.control.layers(undefined, undefined, { position: "bottomright" });
+    var legend = L.control.layers(undefined, undefined, { position: "bottomleft" });
 
     legend.onAdd = (map) => {
       var div = L.DomUtil.create('div', 'legend');
 
-      div.innerHTML += "<h4>Shape Legend</h4>";
+      div.innerHTML += `
+        <div class="flex justify-between items-center align-middle">
+          <h4 class="text-lg">Shape Legend</h4>
+          <button id="toggle-shape-legend" class="text-lg">&#9650;</button>
+        </div>
+      `;
 
-      div.innerHTML += '<i style="background-color: #999999; border-radius: 50%; border: 2px solid black"></i><span>Trailhead Cluster</span><br>';
-      div.innerHTML += '<i style="background-color: #999999; border: 2px solid black"></i><span>Hiking Trailhead</span><br>';
+      const legendBody = L.DomUtil.create('div', 'legend hidden', div);
+
+      legendBody.innerHTML += '<i style="background-color: #999999; border-radius: 50%; border: 2px solid black"></i><span>Trailhead Cluster</span><br>';
+      legendBody.innerHTML += '<i style="background-color: #999999; border: 2px solid black"></i><span>Hiking Trailhead</span><br>';
+
+      // Toggle functionality
+      const toggleButton = div.querySelector('#toggle-shape-legend') as Element;
+      toggleButton.addEventListener('click', () => {
+        if (legendBody.classList.contains('hidden')) {
+          legendBody.classList.remove('hidden');
+          toggleButton.innerHTML = '&#9660;'; // Down arrow
+        } else {
+          legendBody.classList.add('hidden');
+          toggleButton.innerHTML = '&#9650;'; // Up arrow
+        }
+      });
 
       return div
     }
