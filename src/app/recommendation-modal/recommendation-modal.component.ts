@@ -133,7 +133,6 @@ export class RecommendationModalComponent implements OnInit, OnChanges {
 
     closestTrailheads = closestTrailheads.slice(1);
     closestTrailheads = closestTrailheads.filter((a) => {
-      
       if (a.properties.alertStyle == undefined || a.properties.distanceFromSelectedMi == undefined) return false;
       return a.properties.name !== '' && a.properties.distanceFromSelectedMi <= MAX_DIST_MI;
     });

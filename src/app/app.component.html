@@ -49,7 +49,6 @@
         class="absolute top-0 left-[52.5%] w-[45vw] p-4"></app-descriptor-card>
 </div>
 
-
 <div [ngClass]="{'hidden': !isModalOpen}" class="fixed z-[10000] top-[50vh] left-[50vw] w-[25vw] min-w-[400px]">
     <app-recommendation-modal (close)="closeModal()" (search)="generateRecommendations($event)"
         class="relative w-[100%]" (trailheadRecommendations)="notifyRecommendations($event)"

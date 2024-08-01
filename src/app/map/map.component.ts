@@ -9,7 +9,7 @@ import { ShapeService } from '../shape.service';
 import { GeoStylingService } from '../geo-styling.service';
 import skmeans from 'skmeans';
 import { forkJoin } from 'rxjs';
-import { RecommendationQuery, Trail, Trailhead, TrailheadProperties, TrailProperties, WeatherAlert, WeatherAlertDescription } from '../geojson-typing';
+import { Trail, Trailhead, WeatherAlert } from '../geojson-typing';
 import { NgIf } from '@angular/common';
 import { PopupService } from '../popup.service';
 
@@ -28,7 +28,6 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
-const aqiStyleUrls = ["#Good", "#Moderate", "#UnhealthySG", "#Unhealthy", "#VeryUnhealthy", "#Hazardous"];
 const alertCategories = ["None", "Smoke/Dust", "Ozone/PM", "Multiple"];
 
 interface AlertStructure {
