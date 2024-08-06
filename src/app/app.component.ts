@@ -3,7 +3,6 @@ import { FormControl, FormsModule, ReactiveFormsModule } from '@angular/forms'; 
 import { RouterOutlet } from '@angular/router';
 import { MapComponent } from './map/map.component';
 import { ShapeService } from './shape.service';
-import { MarkerService } from './marker.service';
 import { PopupService } from './popup.service';
 import { HttpClientModule } from '@angular/common/http';
 import { sideBarComponent } from './sideBar/sideBar.component';
@@ -19,7 +18,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
 @Component({
   selector: 'app-root',
   standalone: true,
-  providers: [ShapeService, MarkerService, PopupService],
+  providers: [ShapeService, PopupService],
   templateUrl: './app.component.html',
   styleUrl: './app.component.css',
   imports: [CommonModule, RouterOutlet, MapComponent, HttpClientModule, sideBarComponent, DescriptorCardComponent, FormsModule, ReactiveFormsModule, RecommendationSidebarComponent, RecommendationModalComponent],
@@ -29,7 +28,7 @@ import { trigger, state, style, transition, animate } from '@angular/animations'
         transform: 'translateX(0)'
       })),
       state('out', style({
-        transform: 'translateX(-100%)'
+        transform: 'translateX(-200%)'
       })),
       transition('in => out', animate('300ms ease-in-out')),
       transition('out => in', animate('300ms ease-in-out'))
@@ -45,6 +44,7 @@ export class AppComponent {
   public selectedTrailhead!: Trailhead;
   public selectedTrailheadCoordinates!: [number, number];
   public searchControl = new FormControl('');
+  public recommendationTrailhead!: Trailhead
   public recommendedTrailheads!: Trailhead[];
   public recommendationsOpen: boolean = false;
   public currentRecommendationQuery!: RecommendationQuery;
@@ -92,7 +92,8 @@ export class AppComponent {
 
   isModalOpen: boolean = false;
 
-  openModal() {
+  openModal($trailhead: Trailhead) {
+    this.recommendationTrailhead = $trailhead; 
     this.isModalOpen = true;
   }
 

@@ -13,6 +13,7 @@ export class RecommendationSidebarComponent {
   @Output() trailheadSelected = new EventEmitter<Trailhead>();
   @Input() recommendedTrailheads: Trailhead[] | undefined;
   @Output() closeRecommendations = new EventEmitter<boolean>();
+  @Output() openModal = new EventEmitter<Trailhead>();
 
   update(trailHead: Trailhead) {
     this.trailheadSelected.emit(trailHead);

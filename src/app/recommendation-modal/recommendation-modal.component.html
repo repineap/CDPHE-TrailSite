@@ -1,40 +1,12 @@
-<!-- search-modal.component.html -->
-<!-- <div class="fixed inset-0 flex items-center justify-center bg-gray-800 bg-opacity-50">
-    <div class="bg-white rounded-lg shadow-lg p-6 w-96">
-      <div class="flex justify-between items-center">
-        <h2 class="text-lg font-semibold">Search</h2>
-        <button (click)="closeModal()" class="text-gray-500 hover:text-gray-700">
-          &times;
-        </button>
-      </div>
-      <div class="mt-4">
-        <input
-          type="text"
-          placeholder="Type your query"
-          [(ngModel)]="searchQuery"
-          class="w-full p-2 border border-gray-300 rounded-md"
-        />
-      </div>
-      <div class="mt-4 flex justify-end">
-        <button
-          (click)="performSearch()"
-          class="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600"
-        >
-          Search
-        </button>
-      </div>
-    </div>
-  </div> -->
-
-
 <!-- Main modal -->
-<div id="authentication-modal" tabindex="-1" aria-hidden="true"
+<div id="authentication-modal" tabindex="-1" aria-hidden="true" #modal
     class="overflow-y-auto overflow-x-hidden static translate-x-[-50%] translate-y-[-50%] z-50 justify-center items-center w-full md:inset-0 h-[calc(100%-1rem)] max-h-full">
     <div class="relative p-4 w-full max-w-md max-h-full">
         <!-- Modal content -->
         <div class="relative bg-white rounded-lg shadow dark:bg-gray-700">
             <!-- Modal header -->
-            <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
+            <div
+                class="draggable-header flex items-center justify-between p-4 md:p-5 border-b rounded-t dark:border-gray-600">
                 <h3 class="text-xl text-center font-semibold text-gray-900 dark:text-white">
                     Recommendation Query
                 </h3>
@@ -53,59 +25,41 @@
             <div class="p-4 md:p-5">
                 <form class="space-y-4" action="#">
                     <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">AQI Levels to Recommend</label>
+                        <h1 class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">What Air Quality Levels Are Acceptable?</h1>
                         <div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Good']" name="good"
+                            <div class="flex items-center me-4 modal-checkbox"><input
+                                    [(ngModel)]="searchQuery.alertLevels['None']" name="none" id="none"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#Good"
-                                    style="accent-color: rgb(0, 228, 0); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
-                                    for="">Good</label></div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Moderate']" name="moderate"
+                                    type="checkbox" value="None"
+                                    style="accent-color: #00E400; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="none">No
+                                    Alerts ({{ trailheadRecommendationData['none'].length }})</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input
+                                    [(ngModel)]="searchQuery.alertLevels['Smoke/Dust']" name="smokedust" id="smokedust"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#Moderate"
-                                    style="accent-color: rgb(255, 255, 0); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
-                                    for="">Moderate</label></div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#UnhealthySG']" name="sensitive"
+                                    type="checkbox" value="Smoke/Dust"
+                                    style="accent-color: #fff42b; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="smokedust">Wildfire Smoke/Blowing Dust Alerts ({{ trailheadRecommendationData['smokedust'].length }})</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input
+                                    [(ngModel)]="searchQuery.alertLevels['Ozone/PM']" name="ozonepm" id="ozonepm"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#UnhealthySG"
-                                    style="accent-color: rgb(255, 126, 0); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="">Unhealthy
-                                    for Sensitive Groups</label></div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Unhealthy']" name="unhealthy"
+                                    type="checkbox" value="Ozone/PM"
+                                    style="accent-color: #FFA500; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="ozonepm">Ozone/Particulate Matter Alerts ({{ trailheadRecommendationData['ozonepm'].length }})</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input
+                                    [(ngModel)]="searchQuery.alertLevels['Multiple']" name="multiple" id="multiple"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#Unhealthy"
-                                    style="accent-color: rgb(255, 0, 0); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
-                                    for="">Unhealthy</label></div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#VeryUnhealthy']" name="veryunhealthy"
-                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#VeryUnhealthy"
-                                    style="accent-color: rgb(153, 0, 76); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="">Very
-                                    Unhealthy</label></div>
-                            <div class="flex items-center me-4 modal-checkbox"><input [(ngModel)]="searchQuery.aqiLevels['#Hazardous']" name="hazardous"
-                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="#Hazardous"
-                                    style="accent-color: rgb(126, 0, 35); border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
-                                    for="">Hazardous</label></div>
+                                    type="checkbox" value="Multiple"
+                                    style="accent-color: #8B0000; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="multiple">Multiple Pollutants Alerts ({{ trailheadRecommendationData['multiple'].length }})</label></div>
                         </div>
                     </div>
                     <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Number of Trails to
-                            Recommend</label>
-                        <input type="number" name="trailsToRecommend" [(ngModel)]="searchQuery.trailsToRecommend"
-                            [min]="1" [value]="searchQuery.trailsToRecommend"
-                            class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
-                    </div>
-                    <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Max Distance from
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="distInput">Max Distance from
                             Selected Trailhead
                             (miles)</label>
-                        <input type="number" step=".1" name="maxDistanceMi" [(ngModel)]="searchQuery.maxDistanceMi"
-                            [min]="0" [value]="searchQuery.maxDistanceMi"
+                        <input type="number" name="maxDistanceMi" [(ngModel)]="searchQuery.maxDistMi" id="distInput"
+                            [min]="0" [value]="searchQuery.maxDistMi" (change)="maxDistChanged()"
                             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-600 dark:border-gray-500 dark:placeholder-gray-400 dark:text-white" />
                     </div>
                     <div class="mt-4 flex justify-end">
