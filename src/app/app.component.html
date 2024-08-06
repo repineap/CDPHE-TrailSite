@@ -46,7 +46,7 @@
         (closeRecommendations)="closeRecommendations($event)" (openModal)="openModal($event)"
         [@slideInOut]="recommendationsOpen ? 'in' : 'out'"></app-recommendation-sidebar>
     <app-descriptor-card [details]="selectedTrailhead"
-        class="absolute top-0 left-[52.5%] w-[45vw] p-4"></app-descriptor-card>
+        class="absolute top-0 left-[52.5%] w-[30vw] p-4"></app-descriptor-card>
 </div>
 
 <div [ngClass]="{'hidden': !isModalOpen}" class="fixed z-[10000] top-[50vh] left-[50vw] w-[25vw] min-w-[400px]">
