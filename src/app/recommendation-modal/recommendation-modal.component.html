@@ -25,7 +25,8 @@
             <div class="p-4 md:p-5">
                 <form class="space-y-4" action="#">
                     <div>
-                        <h1 class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">What Air Quality Levels Are Acceptable?</h1>
+                        <h1 class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">What Air Quality Levels
+                            Are Acceptable?</h1>
                         <div>
                             <div class="flex items-center me-4 modal-checkbox"><input
                                     [(ngModel)]="searchQuery.alertLevels['None']" name="none" id="none"
@@ -35,27 +36,41 @@
                                     class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="none">No
                                     Alerts ({{ trailheadRecommendationData['none'].length }})</label></div>
                             <div class="flex items-center me-4 modal-checkbox"><input
-                                    [(ngModel)]="searchQuery.alertLevels['Smoke/Dust']" name="smokedust" id="smokedust"
+                                    [(ngModel)]="searchQuery.alertLevels['Blowing Dust']" name="dust" id="dust"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="Smoke/Dust"
-                                    style="accent-color: #fff42b; border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="smokedust">Wildfire Smoke/Blowing Dust Alerts ({{ trailheadRecommendationData['smokedust'].length }})</label></div>
+                                    type="checkbox" value="Dust"
+                                    style="accent-color: #fff200; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="dust">Blowing
+                                    Dust Alerts ({{ trailheadRecommendationData['dust'].length }})</label></div>
                             <div class="flex items-center me-4 modal-checkbox"><input
-                                    [(ngModel)]="searchQuery.alertLevels['Ozone/PM']" name="ozonepm" id="ozonepm"
+                                    [(ngModel)]="searchQuery.alertLevels['Fine Particulate']" name="fine" id="fine"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                                    type="checkbox" value="Ozone/PM"
+                                    type="checkbox" value="FineParticulate"
                                     style="accent-color: #FFA500; border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="ozonepm">Ozone/Particulate Matter Alerts ({{ trailheadRecommendationData['ozonepm'].length }})</label></div>
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="fine">Fine Particulate Alerts ({{
+                                    trailheadRecommendationData['fine'].length }})</label></div>
+                            <div class="flex items-center me-4 modal-checkbox"><input
+                                    [(ngModel)]="searchQuery.alertLevels['Ozone']" name="ozone" id="ozone"
+                                    class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                    type="checkbox" value="Ozone"
+                                    style="accent-color: #ff4242; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="ozone">Ozone Alerts ({{
+                                    trailheadRecommendationData['ozone'].length }})</label></div>
                             <div class="flex items-center me-4 modal-checkbox"><input
                                     [(ngModel)]="searchQuery.alertLevels['Multiple']" name="multiple" id="multiple"
                                     class="legend-icon bg-gray-100 border-gray-300 rounded focus:ring-black dark:focus:ring-white dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
                                     type="checkbox" value="Multiple"
-                                    style="accent-color: #8B0000; border: 1px solid black;"><label
-                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white" for="multiple">Multiple Pollutants Alerts ({{ trailheadRecommendationData['multiple'].length }})</label></div>
+                                    style="accent-color: #8B295A; border: 1px solid black;"><label
+                                    class="ms-1 text-sm font-medium text-gray-900 dark:text-white"
+                                    for="multiple">Multiple Pollutants Alerts ({{
+                                    trailheadRecommendationData['multiple'].length }})</label></div>
                         </div>
                     </div>
                     <div>
-                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="distInput">Max Distance from
+                        <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="distInput">Max
+                            Distance from
                             Selected Trailhead
                             (miles)</label>
                         <input type="number" name="maxDistanceMi" [(ngModel)]="searchQuery.maxDistMi" id="distInput"

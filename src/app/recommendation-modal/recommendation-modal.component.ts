@@ -23,8 +23,9 @@ export class RecommendationModalComponent implements OnInit, OnChanges {
   private trailheadData: any;
   public trailheadRecommendationData: { [key: string]: Trailhead[]} = {
     none: [],
-    smokedust: [],
-    ozonepm: [],
+    dust: [],
+    fine: [],
+    ozone: [],
     multiple: []
   };
   @Input() recommendationTrailhead!: Trailhead;
@@ -36,8 +37,9 @@ export class RecommendationModalComponent implements OnInit, OnChanges {
     maxDistMi: 50,
     alertLevels: {
       "None": false,
-      "Smoke/Dust": false,
-      "Ozone/PM": false,
+      "Blowing Dust": false,
+      "Fine Particulate": false,
+      "Ozone": false,
       "Multiple": false
     }
   }
@@ -50,15 +52,16 @@ export class RecommendationModalComponent implements OnInit, OnChanges {
     this.trailheadRecommendations.emit([
       this.recommendationTrailhead,
       ...(!this.searchQuery.alertLevels['None'] ? [] : this.trailheadRecommendationData['none']),
-      ...(!this.searchQuery.alertLevels['Smoke/Dust'] ? [] : this.trailheadRecommendationData['smokedust']),
-      ...(!this.searchQuery.alertLevels['Ozone/PM'] ? [] : this.trailheadRecommendationData['ozonepm']),
+      ...(!this.searchQuery.alertLevels['Blowing Dust'] ? [] : this.trailheadRecommendationData['dust']),
+      ...(!this.searchQuery.alertLevels['Fine Particulate'] ? [] : this.trailheadRecommendationData['fine']),
+      ...(!this.searchQuery.alertLevels['Ozone'] ? [] : this.trailheadRecommendationData['ozone']),
       ...(!this.searchQuery.alertLevels['Multiple'] ? [] : this.trailheadRecommendationData['multiple'])
     ]);
     this.close.emit();
   }
 
   maxDistChanged() {
-    this.updatedRecommendedTrailheads();
+    this.updateRecommendedTrailheads();
   }
 
   ngOnInit(): void {
@@ -80,15 +83,16 @@ export class RecommendationModalComponent implements OnInit, OnChanges {
       const alertCategoryIdx = alertCategories.indexOf(this.recommendationTrailhead.properties.alertStyle?.category);
       this.searchQuery.alertLevels = {
         "None": true,
-        "Smoke/Dust": alertCategoryIdx > 1,
-        "Ozone/PM": alertCategoryIdx > 2,
+        "Blowing Dust": alertCategoryIdx > 1,
+        "Fine Particulate": alertCategoryIdx > 2,
+        "Ozone": alertCategoryIdx > 3,
         "Multiple": false
       }
-      this.updatedRecommendedTrailheads();
+      this.updateRecommendedTrailheads();
     }
   }
 
-  private updatedRecommendedTrailheads(): void {
+  private updateRecommendedTrailheads(): void {
     for (const level in this.trailheadRecommendationData) {
       this.trailheadRecommendationData[level] = [];
     }

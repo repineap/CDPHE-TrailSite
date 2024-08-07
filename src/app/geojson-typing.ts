@@ -105,8 +105,9 @@ export interface RecommendationQuery {
 export interface AlertLevelStructure {
   [key: string]: boolean
   "None": boolean,
-  "Smoke/Dust": boolean,
-  "Ozone/PM": boolean,
+  "Blowing Dust": boolean,
+  "Fine Particulate": boolean,
+  "Ozone": boolean,
   "Multiple": boolean
 }
 

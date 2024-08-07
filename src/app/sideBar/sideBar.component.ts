@@ -85,7 +85,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
   private styleAlertData() {
     let alerts = this.alertData.features as WeatherAlert[];
-    alerts = alerts.filter(alert => { return alert.properties.event === "Air Quality Alert" })
+    alerts = alerts.filter(alert => {return alert.properties.event === "Air Quality Alert"})
     alerts.sort((alertA, alertB) => {
       const alertAEffective = new Date(alertA.properties.effective).getTime();
       const alertBEffective = new Date(alertB.properties.effective).getTime();
@@ -103,7 +103,7 @@ export class sideBarComponent implements OnChanges, AfterViewInit {
 
     this.countyData.features.forEach((county: any) => {
       const activeAlert = activeAlerts[county.properties.US_FIPS];
-      if (activeAlert) {
+      if (activeAlert != undefined) {
         try {
           county.properties.activeAlert = alerts[activeAlert];
           county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);

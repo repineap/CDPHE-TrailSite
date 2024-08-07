@@ -28,7 +28,7 @@ const iconDefault = L.icon({
 });
 L.Marker.prototype.options.icon = iconDefault;
 
-const alertCategories = ["None", "Smoke/Dust", "Ozone/PM", "Multiple"];
+const alertCategories = ["None", "Dust", "Fine", "Ozone", "Multiple"];
 
 interface AlertStructure {
   layerGroup: L.LayerGroup
@@ -80,7 +80,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
     //The base map for the background, taken from OSM
     const OpenStreetMap_Mapnik = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | AQI Data Provided by <a href="https://www.airnow.gov/">AirNow.gov</a>'
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors | AQI Data Provided by <a href="https://www.airnow.gov/">AirNow.gov</a> | Note: Numbers on map represent clusters'
     });
 
     this.aqiPane = this.map.createPane('AQIPane');
@@ -362,21 +362,27 @@ export class MapComponent implements AfterViewInit, OnChanges {
         style: {} as any
       },
       {
-        category: 'Smoke/Dust',
-        name: 'Wildfire Smoke/Blowing Dust',
+        category: 'Blowing Dust',
+        name: 'Blowing Dust',
         styleIndex: 1,
         style: {} as any
       },
       {
-        category: 'Ozone/PM',
-        name: 'Ozone/Paticulate Matter',
+        category: 'smoke',
+        name: 'Fine Particulate',
         styleIndex: 2,
+        style: {} as any
+      },
+      {
+        category: 'Ozone',
+        name: 'Ozone',
+        styleIndex: 3,
         style: {} as any
       },
       {
         category: 'Multiple',
         name: 'Multiple Pollutants',
-        styleIndex: 3,
+        styleIndex: 4,
         style: {} as any
       },
     ];
@@ -583,7 +589,7 @@ export class MapComponent implements AfterViewInit, OnChanges {
 
     this.countyData.features.forEach((county: any) => {
       const activeAlert = activeAlerts[county.properties.US_FIPS];
-      if (activeAlert) {
+      if (activeAlert != undefined) {
         try {
           county.properties.activeAlert = alerts[activeAlert];
           county.properties.alertStyle = this._styleService.getStyleForAlert(alerts[activeAlert].properties.parameters.NWSheadline[0]);
@@ -604,7 +610,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
       this.styleAlertData();
     }
 
-
     const countyLayer = L.geoJSON(this.countyData, {
       pane: 'CustomMarkerPane',
       style: (feature) => {
@@ -613,7 +618,6 @@ export class MapComponent implements AfterViewInit, OnChanges {
       onEachFeature: (feature, layer) => {
         const featureAlert = feature.properties.activeAlert as WeatherAlert;
         if (featureAlert) {
-          //TODO: Build a pop-up for the nws alerts
           const descriptionData = this._popupService.parseNWSAlertDescription(featureAlert.properties.description);
           const alertPopup = this._popupService.generateAlertPopup(descriptionData, feature.properties.FULL);
           layer.bindPopup(alertPopup, {
